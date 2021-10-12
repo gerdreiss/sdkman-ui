@@ -1,4 +1,4 @@
-use eframe::egui;
+use eframe::egui::menu;
 use eframe::egui::Button;
 use eframe::egui::Color32;
 use eframe::egui::CtxRef;
@@ -64,10 +64,10 @@ impl Candidates {
         // define a TopBottomPanel widget
         TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.add_space(10.);
-            egui::menu::bar(ui, |ui| {
+            menu::bar(ui, |ui| {
                 // logo
                 ui.with_layout(Layout::left_to_right(), |ui| {
-                    ui.add(Label::new("📓").text_style(egui::TextStyle::Heading));
+                    ui.add(Label::new("📓").text_style(TextStyle::Heading));
                 });
                 // Candidates
                 ui.vertical_centered(|ui| {
@@ -75,9 +75,9 @@ impl Candidates {
                 });
                 // controls
                 ui.with_layout(Layout::right_to_left(), |ui| {
-                    let _close_btn = ui.add(Button::new("❌").text_style(egui::TextStyle::Body));
-                    let _refresh_btn = ui.add(Button::new("🔄").text_style(egui::TextStyle::Body));
-                    let _theme_btn = ui.add(Button::new("🌙").text_style(egui::TextStyle::Body));
+                    let _close_btn = ui.add(Button::new("❌").text_style(TextStyle::Body));
+                    let _refresh_btn = ui.add(Button::new("🔄").text_style(TextStyle::Body));
+                    let _theme_btn = ui.add(Button::new("🌙").text_style(TextStyle::Body));
                 });
             });
             ui.add_space(10.);
@@ -92,7 +92,7 @@ impl Candidates {
                 // render name
                 ui.with_layout(Layout::left_to_right(), |ui| {
                     let name = Label::new(format!("{} {} ⤴", a.name, a.default_version))
-                        .text_style(egui::TextStyle::Body)
+                        .text_style(TextStyle::Body)
                         .text_color(WHITE)
                         .sense(Sense::click());
                     ui.add(name);

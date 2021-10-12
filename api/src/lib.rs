@@ -67,8 +67,8 @@ impl FromStr for CandidateModel {
 
                 let idx = line.find(version).unwrap_or(line.len());
                 name = line.chars().take(idx - 1).collect();
-            } else if line.contains("sdk install") {
-                binary.push_str(line.split_ascii_whitespace().last().unwrap());
+            } else if line.contains("$ sdk install") {
+                binary.push_str(line.split_whitespace().last().unwrap());
             } else {
                 description.push_str(line);
                 description.push_str(" ");
@@ -89,6 +89,7 @@ impl FromStr for CandidateModel {
 enum Endpoint {
     CandidateList,
     SdkmanVersion,
+    CandidateVersions(String, String, Vec<String>),
 }
 
 impl ToString for Endpoint {
@@ -96,6 +97,13 @@ impl ToString for Endpoint {
         match self {
             Self::CandidateList => "/candidates/list".to_string(),
             Self::SdkmanVersion => "/broker/download/sdkman/version/stable".to_string(),
+            Self::CandidateVersions(candidate, current, installed) => format!(
+                "/candidates/{}/darwinx64/versions/list?current={}&installed={}",
+                candidate,
+                current,
+                installed.join(",")
+            )
+            .to_string(),
         }
     }
 }
@@ -120,11 +128,9 @@ fn prepare_url(endpoint: Endpoint) -> Result<String, SdkmanApiError> {
     Ok(url.to_string())
 }
 
-fn load_candidates(mut input: String) -> Vec<CandidateModel> {
-    let idx = input
-        .find("-------------------------------")
-        .unwrap_or(input.len());
-    let candidates: String = input.split_off(idx);
+fn load_candidates(input: String) -> Vec<CandidateModel> {
+    let idx = input.find("-------------------------------").unwrap_or(0);
+    let candidates: String = input.chars().skip(idx).collect();
     let pattern: String = candidates.chars().take_while(|c| *c == '-').collect();
     candidates
         .chars()
