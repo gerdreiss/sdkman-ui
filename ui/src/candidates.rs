@@ -93,7 +93,7 @@ impl Candidates {
             ui.horizontal(|ui| {
                 // render name
                 ui.with_layout(Layout::left_to_right(), |ui| {
-                    let name = Label::new(format!("{} ({}) ⤴", a.name, a.default_version))
+                    let name = Label::new(format!("{} {} ⤴", a.name, a.default_version))
                         .text_style(egui::TextStyle::Body)
                         .text_color(WHITE)
                         .sense(Sense::click());

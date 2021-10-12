@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use regex::Regex;
 use reqwest::StatusCode;
 use std::str::FromStr;
@@ -32,10 +33,13 @@ impl FromStr for CandidateModel {
     type Err = std::io::Error;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let version_regex: Regex = Regex::new(r"\(([-\w+\d+\.]+)\)").unwrap();
-        let uri_regex: Regex =
-            Regex::new(r"(http|https)://(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(/|/([\w#!:.?+=&%@!-/]))?")
-                .unwrap();
+        lazy_static! {
+            static ref VERSION_REGEX: Regex = Regex::new(r"\([-\w+\d+\.]+\)").unwrap();
+            static ref URI_REGEX: Regex = Regex::new(
+                r"(http|https)://(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(/|/([\w#!:.?+=&%@!-/]))?"
+            )
+            .unwrap();
+        }
 
         let mut name = String::new();
         let mut binary = String::new();
@@ -47,14 +51,14 @@ impl FromStr for CandidateModel {
         while let Some(line) = lines.next() {
             if line.is_empty() {
                 continue;
-            } else if uri_regex.is_match(line) {
-                let uri = uri_regex
+            } else if URI_REGEX.is_match(line) {
+                let uri = URI_REGEX
                     .find(line)
                     .map(|m| m.as_str())
                     .unwrap_or("failed to extract the homepage");
                 homepage.push_str(uri);
 
-                let version = version_regex
+                let version = VERSION_REGEX
                     .find_iter(line)
                     .last()
                     .map(|m| m.as_str())
