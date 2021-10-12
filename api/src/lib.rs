@@ -62,12 +62,11 @@ impl FromStr for CandidateModel {
                     .find_iter(line)
                     .last()
                     .map(|m| m.as_str())
-                    .unwrap_or("unknown");
+                    .unwrap_or("(unknown)");
                 default_version.push_str(version);
 
-                let mut parts: Vec<&str> = line.split_whitespace().rev().skip(2).collect();
-                parts.reverse();
-                name = parts.join(" ");
+                let idx = line.find(version).unwrap_or(line.len());
+                name = line.chars().take(idx - 1).collect();
             } else if line.contains("sdk install") {
                 binary.push_str(line.split_ascii_whitespace().last().unwrap());
             } else {
