@@ -1,8 +1,10 @@
 use eframe::egui::menu;
+use eframe::egui::show_tooltip_text;
 use eframe::egui::Button;
 use eframe::egui::Color32;
 use eframe::egui::CtxRef;
 use eframe::egui::Hyperlink;
+use eframe::egui::Id;
 use eframe::egui::Label;
 use eframe::egui::Layout;
 use eframe::egui::Sense;
@@ -91,11 +93,20 @@ impl Candidates {
             ui.horizontal(|ui| {
                 // render name
                 ui.with_layout(Layout::left_to_right(), |ui| {
-                    let name = Label::new(format!("{} {} ⤴", a.name, a.default_version))
+                    let name = Button::new(format!("{} {} ⤴", a.name, a.default_version))
                         .text_style(TextStyle::Body)
-                        .text_color(WHITE)
-                        .sense(Sense::click());
-                    ui.add(name);
+                        .text_color(WHITE);
+                    // let name = Label::new(format!("{} {} ⤴", a.name, a.default_version))
+                    //     .text_style(TextStyle::Body)
+                    //     .text_color(WHITE)
+                    //     .sense(Sense::click());
+                    ui.add(name).on_hover_ui(|ui| {
+                        show_tooltip_text(
+                            ui.ctx(),
+                            Id::new(&a.name),
+                            "Click to display all available versions",
+                        );
+                    });
                 });
                 // render URL
                 ui.with_layout(Layout::right_to_left(), |ui| {
