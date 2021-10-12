@@ -49,8 +49,8 @@ fn render_footer(ctx: &CtxRef) {
                     .text_style(TextStyle::Monospace),
             );
             ui.add(
-                Hyperlink::new("https://github.com/gerdreiss/sdkmanr")
-                    .text("gerdreiss/sdkmanr")
+                Hyperlink::new("https://github.com/gerdreiss/sdkman-ui")
+                    .text("gerdreiss/sdkman-ui")
                     .text_style(TextStyle::Monospace),
             );
             ui.add_space(10.);
