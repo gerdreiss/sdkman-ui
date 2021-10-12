@@ -1,9 +1,14 @@
-use api::*;
-use eframe::egui::{
-    self, Button, Color32, CtxRef, FontDefinitions, FontFamily, Hyperlink, Label, Layout, Sense,
-    Separator, TopBottomPanel,
-};
-use std::borrow::Cow;
+use eframe::egui;
+use eframe::egui::Button;
+use eframe::egui::Color32;
+use eframe::egui::CtxRef;
+use eframe::egui::Hyperlink;
+use eframe::egui::Label;
+use eframe::egui::Layout;
+use eframe::egui::Sense;
+use eframe::egui::Separator;
+use eframe::egui::TextStyle;
+use eframe::egui::TopBottomPanel;
 
 const PADDING: f32 = 8.0;
 const WHITE: Color32 = Color32::from_rgb(255, 255, 255);
@@ -18,7 +23,7 @@ pub struct Candidate {
 }
 
 impl Candidate {
-    fn new(model: &CandidateModel) -> Candidate {
+    fn from_model(model: &api::CandidateModel) -> Candidate {
         Candidate {
             name: model.name.clone(),
             default_version: model.default_version.clone(),
@@ -30,36 +35,29 @@ impl Candidate {
 }
 
 pub struct Candidates {
+    app_name: &'static str,
+    app_heading: &'static str,
     candidates: Vec<Candidate>,
 }
 
 impl Candidates {
-    pub fn new(models: &Vec<CandidateModel>) -> Candidates {
+    pub fn new(models: &Vec<api::CandidateModel>) -> Candidates {
         Candidates {
-            candidates: models.iter().map(|model| Candidate::new(model)).collect(),
+            app_name: "sdkman-ui",
+            app_heading: "candidates",
+            candidates: models
+                .iter()
+                .map(|model| Candidate::from_model(model))
+                .collect(),
         }
     }
 
-    pub fn configure_fonts(&self, ctx: &CtxRef) {
-        let mut font_def = FontDefinitions::default();
-        font_def.font_data.insert(
-            "MesloLGS".to_string(),
-            Cow::Borrowed(include_bytes!("../assets/MesloLGS_NF_Regular.ttf")),
-        );
-        font_def.family_and_size.insert(
-            eframe::egui::TextStyle::Heading,
-            (FontFamily::Proportional, 35.),
-        );
-        font_def.family_and_size.insert(
-            eframe::egui::TextStyle::Body,
-            (FontFamily::Proportional, 20.),
-        );
-        font_def
-            .fonts_for_family
-            .get_mut(&FontFamily::Proportional)
-            .unwrap()
-            .insert(0, "MesloLGS".to_string());
-        ctx.set_fonts(font_def);
+    pub fn app_name(&self) -> &str {
+        self.app_name
+    }
+
+    pub fn app_heading(&self) -> &str {
+        self.app_heading
     }
 
     pub(crate) fn render_top_panel(&self, ctx: &CtxRef) {
@@ -73,7 +71,7 @@ impl Candidates {
                 });
                 // Candidates
                 ui.vertical_centered(|ui| {
-                    ui.heading("Candidates");
+                    ui.heading(self.app_heading());
                 });
                 // controls
                 ui.with_layout(Layout::right_to_left(), |ui| {
@@ -125,5 +123,25 @@ impl Candidates {
             ui.add_space(PADDING);
             ui.add(Separator::default());
         }
+    }
+
+    pub fn render_footer(&self, ctx: &CtxRef) {
+        TopBottomPanel::bottom("footer").show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.add_space(10.);
+                ui.add(Label::new("API source: https://api.sdkman.io/2").monospace());
+                ui.add(
+                    Hyperlink::new("https://github.com/emilk/egui")
+                        .text("Made with egui")
+                        .text_style(TextStyle::Monospace),
+                );
+                ui.add(
+                    Hyperlink::new("https://github.com/gerdreiss/sdkman-ui")
+                        .text("gerdreiss/sdkman-ui")
+                        .text_style(TextStyle::Monospace),
+                );
+                ui.add_space(10.);
+            })
+        });
     }
 }

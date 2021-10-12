@@ -1,15 +1,14 @@
-use candidates::*;
+use candidates::Candidates;
 use eframe::egui::CentralPanel;
 use eframe::egui::CtxRef;
-use eframe::egui::Hyperlink;
-use eframe::egui::Label;
+use eframe::egui::FontDefinitions;
+use eframe::egui::FontFamily;
 use eframe::egui::ScrollArea;
-use eframe::egui::TextStyle;
-use eframe::egui::TopBottomPanel;
 use eframe::egui::Vec2;
 use eframe::epi::App;
 use eframe::run_native;
 use eframe::NativeOptions;
+use std::borrow::Cow;
 
 mod candidates;
 
@@ -20,7 +19,7 @@ impl App for Candidates {
         _frame: &mut eframe::epi::Frame<'_>,
         _storage: Option<&dyn eframe::epi::Storage>,
     ) {
-        self.configure_fonts(ctx);
+        configure_fonts(ctx);
     }
 
     fn update(&mut self, ctx: &eframe::egui::CtxRef, _frame: &mut eframe::epi::Frame<'_>) {
@@ -29,33 +28,35 @@ impl App for Candidates {
             ScrollArea::auto_sized().show(ui, |ui| {
                 self.render_candidates(ui);
             });
-            render_footer(ctx);
+            self.render_footer(ctx);
         });
     }
 
     fn name(&self) -> &str {
-        "Candidates"
+        self.app_name()
     }
 }
 
-fn render_footer(ctx: &CtxRef) {
-    TopBottomPanel::bottom("footer").show(ctx, |ui| {
-        ui.vertical_centered(|ui| {
-            ui.add_space(10.);
-            ui.add(Label::new("API source: https://api.sdkman.io/2").monospace());
-            ui.add(
-                Hyperlink::new("https://github.com/emilk/egui")
-                    .text("Made with egui")
-                    .text_style(TextStyle::Monospace),
-            );
-            ui.add(
-                Hyperlink::new("https://github.com/gerdreiss/sdkman-ui")
-                    .text("gerdreiss/sdkman-ui")
-                    .text_style(TextStyle::Monospace),
-            );
-            ui.add_space(10.);
-        })
-    });
+pub fn configure_fonts(ctx: &CtxRef) {
+    let mut font_def = FontDefinitions::default();
+    font_def.font_data.insert(
+        "MesloLGS".to_string(),
+        Cow::Borrowed(include_bytes!("../assets/MesloLGS_NF_Regular.ttf")),
+    );
+    font_def.family_and_size.insert(
+        eframe::egui::TextStyle::Heading,
+        (FontFamily::Proportional, 35.),
+    );
+    font_def.family_and_size.insert(
+        eframe::egui::TextStyle::Body,
+        (FontFamily::Proportional, 20.),
+    );
+    font_def
+        .fonts_for_family
+        .get_mut(&FontFamily::Proportional)
+        .unwrap()
+        .insert(0, "MesloLGS".to_string());
+    ctx.set_fonts(font_def);
 }
 
 fn main() {
