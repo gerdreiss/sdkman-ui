@@ -158,7 +158,7 @@ impl Candidates {
         if added.clicked() {
             match api::fetch_candidate_versions(&mut candidate.to_model()) {
                 Ok(candidate_with_versions) => {
-                    // TODO *selected_candidate = Some(Candidate::from_model(candidate_with_versions));
+                    // todo self.selected_candidate = Some(Candidate::from_model(candidate_with_versions));
                     let msg = format!(
                         "Displaying all versions for candidate '{}':\n",
                         candidate.name
@@ -172,7 +172,7 @@ impl Candidates {
                     )
                 }
                 Err(e) => {
-                    // TODO *selected_candidate = None;
+                    // todo self.selected_candidate = None;
                     let msg = format!(
                         "Loading all versions for candidate '{}' failed",
                         candidate.name
