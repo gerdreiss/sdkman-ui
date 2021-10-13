@@ -58,7 +58,6 @@ pub struct Candidates {
     app_name: &'static str,
     app_heading: &'static str,
     candidates: Vec<Candidate>,
-    status_text: &'static str,
 }
 
 impl Candidates {
@@ -70,7 +69,6 @@ impl Candidates {
                 .iter()
                 .map(|model| Candidate::from_model(model))
                 .collect(),
-            status_text: "Candidates loaded.",
         }
     }
 
@@ -220,8 +218,6 @@ impl Candidates {
     pub fn render_footer(&self, ctx: &CtxRef) {
         TopBottomPanel::bottom("footer").show(ctx, |ui| {
             ui.vertical_centered(|ui| {
-                ui.add_space(10.);
-                ui.add(Label::new(self.status_text).monospace());
                 ui.add_space(10.);
                 ui.add(Label::new("API source: https://api.sdkman.io/2").monospace());
                 ui.add(
