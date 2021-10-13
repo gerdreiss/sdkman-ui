@@ -8,6 +8,8 @@ const BASE_URL: &str = "https://api.sdkman.io/2";
 
 #[derive(thiserror::Error, Debug)]
 pub enum SdkmanApiError {
+    #[error("Failed to decode URL")]
+    FailedToDecodeUrl(#[from] std::string::FromUtf8Error),
     #[error("Failed converting response to string")]
     FailedResponseToString(#[from] std::io::Error),
     #[error("Url parsing failed")]
@@ -158,8 +160,7 @@ impl ToString for Endpoint {
                 candidate,
                 current,
                 installed.join(",")
-            )
-            .to_string(),
+            ),
         }
     }
 }
@@ -171,7 +172,7 @@ pub fn fetch_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
     if status.is_success() {
         return res
             .text()
-            .map(|text| load_candidates(text))
+            .map(|text| parse_candidates(text))
             .map_err(|err| SdkmanApiError::RequestFailed(err));
     } else {
         return Err(SdkmanApiError::ServerError(status.as_u16()));
@@ -186,6 +187,7 @@ pub fn fetch_candidate_versions(
         "".to_owned(),
         Vec::new(),
     ))?;
+    println!("Querying: {}", url);
     let res = reqwest::blocking::get(url)?;
     let status: StatusCode = res.status();
     if status.is_success() {
@@ -199,12 +201,12 @@ pub fn fetch_candidate_versions(
 }
 
 fn prepare_url(endpoint: Endpoint) -> Result<String, SdkmanApiError> {
-    let mut url = Url::parse(BASE_URL)?;
-    url.path_segments_mut().unwrap().push(&endpoint.to_string());
+    let complete_url = format!("{}{}", BASE_URL, endpoint.to_string());
+    let url = Url::parse(&complete_url)?;
     Ok(url.to_string())
 }
 
-fn load_candidates(input: String) -> Vec<CandidateModel> {
+fn parse_candidates(input: String) -> Vec<CandidateModel> {
     let idx = input.find("-------------------------------").unwrap_or(0);
     let candidates: String = input.chars().skip(idx).collect();
     let pattern: String = candidates.chars().take_while(|c| *c == '-').collect();

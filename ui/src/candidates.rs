@@ -39,12 +39,26 @@ impl Candidate {
             available_versions: model.available_versions().unwrap_or(&String::new()).clone(),
         }
     }
+    fn to_model(&self) -> api::CandidateModel {
+        api::CandidateModel::new(
+            self.name.clone(),
+            self.installation
+                .split_whitespace()
+                .last()
+                .unwrap_or(&self.name.to_lowercase())
+                .to_owned(),
+            self.description.clone(),
+            self.url.clone(),
+            self.default_version.clone(),
+        )
+    }
 }
 
 pub struct Candidates {
     app_name: &'static str,
     app_heading: &'static str,
     candidates: Vec<Candidate>,
+    status_text: &'static str,
 }
 
 impl Candidates {
@@ -56,6 +70,7 @@ impl Candidates {
                 .iter()
                 .map(|model| Candidate::from_model(model))
                 .collect(),
+            status_text: "Candidates loaded.",
         }
     }
 
@@ -116,7 +131,7 @@ impl Candidates {
     pub fn render_candidates(&self, ui: &mut Ui) {
         for candidate in &self.candidates {
             ui.add_space(PADDING);
-            self.render_candidate(ui, candidate);
+            self.render_candidate(ui, &candidate);
             ui.add_space(PADDING);
             ui.add(Separator::default());
         }
@@ -146,13 +161,40 @@ impl Candidates {
         let title_btn = Button::new(btn_label)
             .text_style(TextStyle::Body)
             .text_color(WHITE);
-        ui.add(title_btn).on_hover_ui(|ui| {
+        let added = ui.add(title_btn).on_hover_ui(|ui| {
             show_tooltip_text(
                 ui.ctx(),
                 Id::new(&candidate.name),
                 "Click to display all available versions",
             );
         });
+        if added.clicked() {
+            match api::fetch_candidate_versions(&mut candidate.to_model()) {
+                // TODO change the display to the one selected candidate with all available versions
+                Ok(candidate_with_versions) => {
+                    let msg = format!(
+                        "Displaying all versions for candidate '{}':\n",
+                        candidate.name
+                    );
+                    //self.status_text = msg
+                    println!("{}", msg);
+                    println!(
+                        "{}",
+                        candidate_with_versions
+                            .available_versions()
+                            .unwrap_or(&String::new())
+                    )
+                }
+                Err(e) => {
+                    let msg = format!(
+                        "Loading all versions for candidate '{}' failed",
+                        candidate.name
+                    );
+                    //self.status_text = msg
+                    println!("{}:\n{}", msg, e)
+                }
+            }
+        }
     }
 
     fn render_homepage(&self, ui: &mut Ui, candidate: &Candidate) {
@@ -178,6 +220,8 @@ impl Candidates {
     pub fn render_footer(&self, ctx: &CtxRef) {
         TopBottomPanel::bottom("footer").show(ctx, |ui| {
             ui.vertical_centered(|ui| {
+                ui.add_space(10.);
+                ui.add(Label::new(self.status_text).monospace());
                 ui.add_space(10.);
                 ui.add(Label::new("API source: https://api.sdkman.io/2").monospace());
                 ui.add(
