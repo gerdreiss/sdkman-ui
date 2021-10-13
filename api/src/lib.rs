@@ -146,7 +146,6 @@ type InstalledVersions = Vec<String>;
 
 enum Endpoint {
     CandidateList,
-    SdkmanVersion,
     CandidateVersions(BinaryName, CurrentVersion, InstalledVersions),
 }
 
@@ -154,7 +153,6 @@ impl ToString for Endpoint {
     fn to_string(&self) -> String {
         match self {
             Self::CandidateList => "/candidates/list".to_string(),
-            Self::SdkmanVersion => "/broker/download/sdkman/version/stable".to_string(),
             Self::CandidateVersions(candidate, current, installed) => format!(
                 "/candidates/{}/darwinx64/versions/list?current={}&installed={}",
                 candidate,
