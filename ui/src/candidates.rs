@@ -1,18 +1,4 @@
-use eframe::egui::menu;
-use eframe::egui::show_tooltip_text;
-use eframe::egui::Button;
-use eframe::egui::Color32;
-use eframe::egui::CtxRef;
-use eframe::egui::FontDefinitions;
-use eframe::egui::FontFamily;
-use eframe::egui::Hyperlink;
-use eframe::egui::Id;
-use eframe::egui::Label;
-use eframe::egui::Layout;
-use eframe::egui::Separator;
-use eframe::egui::TextStyle;
-use eframe::egui::TopBottomPanel;
-use eframe::egui::Ui;
+use eframe::egui::*;
 use std::borrow::Cow;
 
 const PADDING: f32 = 8.0;
@@ -58,6 +44,7 @@ pub struct Candidates {
     app_name: &'static str,
     app_heading: &'static str,
     candidates: Vec<Candidate>,
+    selected_candidate: Option<Candidate>,
 }
 
 impl Candidates {
@@ -69,6 +56,7 @@ impl Candidates {
                 .iter()
                 .map(|model| Candidate::from_model(model))
                 .collect(),
+            selected_candidate: None,
         }
     }
 
@@ -102,7 +90,7 @@ impl Candidates {
         ctx.set_fonts(font_def);
     }
 
-    pub(crate) fn render_top_panel(&self, ctx: &CtxRef) {
+    pub(crate) fn render_top_panel(&self, ctx: &CtxRef, frame: &mut eframe::epi::Frame<'_>) {
         // define a TopBottomPanel widget
         TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.add_space(10.);
@@ -117,7 +105,11 @@ impl Candidates {
                 });
                 // controls
                 ui.with_layout(Layout::right_to_left(), |ui| {
+                    ui.add_space(10.);
                     let _close_btn = ui.add(Button::new("❌").text_style(TextStyle::Body));
+                    if _close_btn.clicked() {
+                        frame.quit();
+                    }
                     let _refresh_btn = ui.add(Button::new("🔄").text_style(TextStyle::Body));
                     let _theme_btn = ui.add(Button::new("🌙").text_style(TextStyle::Body));
                 });
@@ -126,21 +118,17 @@ impl Candidates {
         });
     }
 
-    pub fn render_candidates(&self, ui: &mut Ui) {
+    pub fn render_candidates(&mut self, ui: &mut Ui) {
         for candidate in &self.candidates {
             ui.add_space(PADDING);
-            self.render_candidate(ui, &candidate);
+            self.render_name_defaultversion_homepage(ui, &candidate);
+            ui.add_space(PADDING);
+            self.render_description(ui, &candidate);
+            ui.add_space(PADDING);
+            self.render_installation_instruction(ui, &candidate);
             ui.add_space(PADDING);
             ui.add(Separator::default());
         }
-    }
-
-    pub fn render_candidate(&self, ui: &mut Ui, candidate: &Candidate) {
-        self.render_name_defaultversion_homepage(ui, candidate);
-        ui.add_space(PADDING);
-        self.render_description(ui, candidate);
-        ui.add_space(PADDING);
-        self.render_installation_instruction(ui, candidate);
     }
 
     fn render_name_defaultversion_homepage(&self, ui: &mut Ui, candidate: &Candidate) {
@@ -168,8 +156,8 @@ impl Candidates {
         });
         if added.clicked() {
             match api::fetch_candidate_versions(&mut candidate.to_model()) {
-                // TODO change the display to the one selected candidate with all available versions
                 Ok(candidate_with_versions) => {
+                    //*selected_candidate = Some(Candidate::from_model(candidate_with_versions));
                     let msg = format!(
                         "Displaying all versions for candidate '{}':\n",
                         candidate.name
@@ -184,6 +172,7 @@ impl Candidates {
                     )
                 }
                 Err(e) => {
+                    //*selected_candidate = None;
                     let msg = format!(
                         "Loading all versions for candidate '{}' failed",
                         candidate.name

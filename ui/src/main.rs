@@ -18,8 +18,8 @@ impl App for Candidates {
         self.configure_fonts(ctx);
     }
 
-    fn update(&mut self, ctx: &eframe::egui::CtxRef, _frame: &mut eframe::epi::Frame<'_>) {
-        self.render_top_panel(ctx);
+    fn update(&mut self, ctx: &eframe::egui::CtxRef, frame: &mut eframe::epi::Frame<'_>) {
+        self.render_top_panel(ctx, frame);
         CentralPanel::default().show(ctx, |ui| {
             ScrollArea::auto_sized().show(ui, |ui| {
                 self.render_candidates(ui);
