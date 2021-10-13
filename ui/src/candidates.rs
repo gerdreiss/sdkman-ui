@@ -207,7 +207,7 @@ impl Candidates {
         TopBottomPanel::bottom("footer").show(ctx, |ui| {
             ui.vertical_centered(|ui| {
                 ui.add_space(10.);
-                ui.add(Label::new("API source: https://api.sdkman.io/2").monospace());
+                ui.add(Label::new("API: https://api.sdkman.io/2").monospace());
                 ui.add(
                     Hyperlink::new("https://github.com/emilk/egui")
                         .text("Made with egui")
@@ -215,7 +215,7 @@ impl Candidates {
                 );
                 ui.add(
                     Hyperlink::new("https://github.com/gerdreiss/sdkman-ui")
-                        .text("gerdreiss/sdkman-ui")
+                        .text("Hosted on Github")
                         .text_style(TextStyle::Monospace),
                 );
                 ui.add_space(10.);
