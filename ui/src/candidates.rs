@@ -129,6 +129,7 @@ impl Candidates {
             ui.add_space(PADDING);
             ui.add(Separator::default());
         }
+        ui.add_space(7. * PADDING);
     }
 
     fn render_name_defaultversion_homepage(&self, ui: &mut Ui, candidate: &Candidate) {

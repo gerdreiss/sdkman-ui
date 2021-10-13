@@ -96,7 +96,7 @@ impl FromStr for CandidateModel {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         lazy_static! {
-            static ref VERSION_REGEX: Regex = Regex::new(r"\([-\w+\d+\.]+\)").unwrap();
+            static ref VERSION_REGEX: Regex = Regex::new(r"\([-\w+\d+\.! ]+\)").unwrap();
             static ref URI_REGEX: Regex = Regex::new(
                 r"(http|https)://(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(/|/([\w#!:.?+=&%@!-/]))?"
             )
@@ -136,9 +136,14 @@ impl FromStr for CandidateModel {
                 description.push_str(" ");
             }
         }
-        let model = CandidateModel::new(name, binary_name, description, homepage, default_version);
 
-        Ok(model)
+        Ok(CandidateModel::new(
+            name,
+            binary_name,
+            description,
+            homepage,
+            default_version,
+        ))
     }
 }
 
@@ -215,6 +220,7 @@ fn parse_candidates(input: String) -> Vec<CandidateModel> {
         .skip(pattern.len())
         .collect::<String>()
         .split_terminator(&pattern)
+        .filter(|x| !x.trim().is_empty())
         .map(|desc| CandidateModel::from_str(desc).unwrap())
         .collect()
 }
