@@ -22,11 +22,71 @@ pub enum SdkmanApiError {
 
 #[derive(Debug)]
 pub struct CandidateModel {
-    pub name: String,
-    pub binary: String,
-    pub default_version: String,
-    pub homepage: String,
-    pub description: String,
+    name: String,
+    binary_name: String,
+    description: String,
+    homepage: String,
+    default_version: String,
+    current_version: Option<String>,
+    available_versions: Option<String>,
+    versions: Vec<String>,
+}
+
+impl CandidateModel {
+    pub fn new(
+        name: String,
+        binary_name: String,
+        description: String,
+        homepage: String,
+        default_version: String,
+    ) -> Self {
+        CandidateModel {
+            name,
+            binary_name,
+            description,
+            homepage,
+            default_version,
+            current_version: None,
+            available_versions: None,
+            versions: Vec::new(),
+        }
+    }
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    pub fn binary_name(&self) -> &String {
+        &self.binary_name
+    }
+    pub fn description(&self) -> &String {
+        &self.description
+    }
+    pub fn homepage(&self) -> &String {
+        &self.homepage
+    }
+    pub fn default_version(&self) -> &String {
+        &self.default_version
+    }
+    pub fn current_version(&self) -> Option<&String> {
+        self.current_version.as_ref()
+    }
+    pub fn available_versions(&self) -> Option<&String> {
+        self.available_versions.as_ref()
+    }
+    pub fn versions(&self) -> &Vec<String> {
+        &self.versions
+    }
+    pub fn with_current_version(&mut self, current_version: String) -> &mut Self {
+        self.current_version = Some(current_version);
+        self
+    }
+    pub fn with_available_versions(&mut self, versions: String) -> &mut Self {
+        self.available_versions = Some(versions);
+        self
+    }
+    pub fn with_versions(&mut self, versions: Vec<String>) -> &mut Self {
+        self.versions = versions;
+        self
+    }
 }
 
 impl FromStr for CandidateModel {
@@ -42,10 +102,10 @@ impl FromStr for CandidateModel {
         }
 
         let mut name = String::new();
-        let mut binary = String::new();
-        let mut default_version = String::new();
-        let mut homepage = String::new();
+        let mut binary_name = String::new();
         let mut description = String::new();
+        let mut homepage = String::new();
+        let mut default_version = String::new();
 
         let mut lines = input.lines();
         while let Some(line) = lines.next() {
@@ -68,28 +128,26 @@ impl FromStr for CandidateModel {
                 let idx = line.find(version).unwrap_or(line.len());
                 name = line.chars().take(idx - 1).collect();
             } else if line.contains("$ sdk install") {
-                binary.push_str(line.split_whitespace().last().unwrap());
+                binary_name.push_str(line.split_whitespace().last().unwrap());
             } else {
                 description.push_str(line);
                 description.push_str(" ");
             }
         }
-        let model = CandidateModel {
-            name,
-            binary,
-            default_version,
-            homepage,
-            description,
-        };
+        let model = CandidateModel::new(name, binary_name, description, homepage, default_version);
 
         Ok(model)
     }
 }
 
+type BinaryName = String;
+type CurrentVersion = String;
+type InstalledVersions = Vec<String>;
+
 enum Endpoint {
     CandidateList,
     SdkmanVersion,
-    CandidateVersions(String, String, Vec<String>),
+    CandidateVersions(BinaryName, CurrentVersion, InstalledVersions),
 }
 
 impl ToString for Endpoint {
@@ -116,6 +174,26 @@ pub fn fetch_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
         return res
             .text()
             .map(|text| load_candidates(text))
+            .map_err(|err| SdkmanApiError::RequestFailed(err));
+    } else {
+        return Err(SdkmanApiError::ServerError(status.as_u16()));
+    }
+}
+
+pub fn fetch_candidate_versions(
+    candidate: &mut CandidateModel,
+) -> Result<&CandidateModel, SdkmanApiError> {
+    let url = prepare_url(Endpoint::CandidateVersions(
+        candidate.binary_name().clone(),
+        "".to_owned(),
+        Vec::new(),
+    ))?;
+    let res = reqwest::blocking::get(url)?;
+    let status: StatusCode = res.status();
+    if status.is_success() {
+        return res
+            .text()
+            .map(move |text| &*candidate.with_available_versions(text))
             .map_err(|err| SdkmanApiError::RequestFailed(err));
     } else {
         return Err(SdkmanApiError::ServerError(status.as_u16()));
