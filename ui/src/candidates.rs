@@ -157,12 +157,11 @@ impl Candidates {
         if added.clicked() {
             match api::fetch_candidate_versions(&mut candidate.to_model()) {
                 Ok(candidate_with_versions) => {
-                    //*selected_candidate = Some(Candidate::from_model(candidate_with_versions));
+                    // TODO *selected_candidate = Some(Candidate::from_model(candidate_with_versions));
                     let msg = format!(
                         "Displaying all versions for candidate '{}':\n",
                         candidate.name
                     );
-                    //self.status_text = msg
                     println!("{}", msg);
                     println!(
                         "{}",
@@ -172,12 +171,11 @@ impl Candidates {
                     )
                 }
                 Err(e) => {
-                    //*selected_candidate = None;
+                    // TODO *selected_candidate = None;
                     let msg = format!(
                         "Loading all versions for candidate '{}' failed",
                         candidate.name
                     );
-                    //self.status_text = msg
                     println!("{}:\n{}", msg, e)
                 }
             }
