@@ -5,6 +5,7 @@ const PADDING: f32 = 8.0;
 const WHITE: Color32 = Color32::from_rgb(255, 255, 255);
 const CYAN: Color32 = Color32::from_rgb(0, 255, 255);
 
+#[derive(PartialEq)]
 pub struct Candidate {
     name: String,
     default_version: String,
@@ -40,6 +41,7 @@ impl Candidate {
     }
 }
 
+#[derive(PartialEq)]
 pub struct Candidates {
     app_name: &'static str,
     app_heading: &'static str,
@@ -119,88 +121,123 @@ impl Candidates {
     }
 
     pub fn render_candidates(&mut self, ui: &mut Ui) {
-        for candidate in &self.candidates {
+        let Self {
+            app_name,
+            app_heading,
+            candidates,
+            selected_candidate,
+        } = self;
+
+        // render candidates
+        for curr in candidates {
+            let candidate = if selected_candidate.is_none()
+                || curr.name == selected_candidate.as_ref().unwrap().name
+            {
+                curr
+            } else {
+                continue;
+            };
+
             ui.add_space(PADDING);
-            self.render_name_defaultversion_homepage(ui, &candidate);
+
+            // render name, default version, and homepage URL
+            ui.horizontal(|ui| {
+                // render name and default version
+                ui.with_layout(Layout::left_to_right(), |ui| {
+                    let btn_label = format!("{} {} ⤴", candidate.name, candidate.default_version);
+                    let title_btn = Button::new(btn_label)
+                        .text_style(TextStyle::Body)
+                        .text_color(WHITE);
+                    let added = ui.add(title_btn).on_hover_ui(|ui| {
+                        show_tooltip_text(
+                            ui.ctx(),
+                            Id::new(&candidate.name),
+                            "Click to display all available versions",
+                        );
+                    });
+                    // handle clicks on the name and default version
+                    if added.clicked() {
+                        match api::fetch_candidate_versions(&mut candidate.to_model()) {
+                            Ok(candidate_with_versions) => {
+                                *selected_candidate =
+                                    Some(Candidate::from_model(candidate_with_versions));
+                            }
+                            Err(e) => {
+                                *selected_candidate = None;
+                                let msg = format!(
+                                    "Loading all versions for candidate '{}' failed",
+                                    candidate.name
+                                );
+                                println!("{}:\n{}", msg, e)
+                            }
+                        }
+                    }
+                });
+
+                // render homepage URL
+                ui.with_layout(Layout::right_to_left(), |ui| {
+                    ui.style_mut().visuals.hyperlink_color = CYAN;
+                    ui.add(Hyperlink::new(&candidate.url).text(&candidate.url));
+                });
+            });
+
+            // render description
             ui.add_space(PADDING);
-            self.render_description(ui, &candidate);
+            let description = Label::new(&candidate.description)
+                .wrap(true)
+                .text_style(eframe::egui::TextStyle::Body);
+            ui.add(description);
             ui.add_space(PADDING);
-            self.render_installation_instruction(ui, &candidate);
+            // render installation instruction
+            ui.with_layout(Layout::right_to_left(), |ui| {
+                let installation =
+                    Label::new(&candidate.installation).text_style(eframe::egui::TextStyle::Body);
+                ui.add(installation);
+            });
+
             ui.add_space(PADDING);
+
+            if selected_candidate.is_some() {
+                ui.add_space(PADDING);
+                ui.horizontal(|ui| {
+                    ui.with_layout(Layout::left_to_right(), |ui| {
+                        // render all available versions
+                        ui.add_space(PADDING);
+                        let available_versions =
+                            Label::new(&selected_candidate.as_ref().unwrap().available_versions)
+                                .wrap(true)
+                                .text_style(eframe::egui::TextStyle::Body);
+                        ui.add(available_versions);
+                        ui.add_space(PADDING);
+                    });
+                    ui.with_layout(Layout::right_to_left(), |ui| {
+                        ui.add_space(10.);
+                        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                            let _close_btn = ui
+                                .add(
+                                    Label::new("❌")
+                                        .wrap(true)
+                                        .text_style(eframe::egui::TextStyle::Body)
+                                        .sense(Sense::click()),
+                                )
+                                .on_hover_ui(|ui| {
+                                    show_tooltip_text(
+                                        ui.ctx(),
+                                        Id::new(&candidate.name),
+                                        "Click to close all available versions",
+                                    );
+                                });
+                            if _close_btn.clicked() {
+                                *selected_candidate = None;
+                            }
+                        });
+                    });
+                });
+            }
             ui.add(Separator::default());
         }
+
         ui.add_space(7. * PADDING);
-    }
-
-    fn render_name_defaultversion_homepage(&self, ui: &mut Ui, candidate: &Candidate) {
-        ui.horizontal(|ui| {
-            ui.with_layout(Layout::left_to_right(), |ui| {
-                self.render_name_defaultversion(ui, candidate);
-            });
-            ui.with_layout(Layout::right_to_left(), |ui| {
-                self.render_homepage(ui, candidate);
-            });
-        });
-    }
-
-    fn render_name_defaultversion(&self, ui: &mut Ui, candidate: &Candidate) {
-        let btn_label = format!("{} {} ⤴", candidate.name, candidate.default_version);
-        let title_btn = Button::new(btn_label)
-            .text_style(TextStyle::Body)
-            .text_color(WHITE);
-        let added = ui.add(title_btn).on_hover_ui(|ui| {
-            show_tooltip_text(
-                ui.ctx(),
-                Id::new(&candidate.name),
-                "Click to display all available versions",
-            );
-        });
-        if added.clicked() {
-            match api::fetch_candidate_versions(&mut candidate.to_model()) {
-                Ok(candidate_with_versions) => {
-                    // todo self.selected_candidate = Some(Candidate::from_model(candidate_with_versions));
-                    let msg = format!(
-                        "Displaying all versions for candidate '{}':\n",
-                        candidate.name
-                    );
-                    println!("{}", msg);
-                    println!(
-                        "{}",
-                        candidate_with_versions
-                            .available_versions()
-                            .unwrap_or(&String::new())
-                    )
-                }
-                Err(e) => {
-                    // todo self.selected_candidate = None;
-                    let msg = format!(
-                        "Loading all versions for candidate '{}' failed",
-                        candidate.name
-                    );
-                    println!("{}:\n{}", msg, e)
-                }
-            }
-        }
-    }
-
-    fn render_homepage(&self, ui: &mut Ui, candidate: &Candidate) {
-        ui.style_mut().visuals.hyperlink_color = CYAN;
-        ui.add(Hyperlink::new(&candidate.url).text(&candidate.url));
-    }
-
-    fn render_description(&self, ui: &mut Ui, candidate: &Candidate) {
-        let description = Label::new(&candidate.description)
-            .wrap(true)
-            .text_style(eframe::egui::TextStyle::Body);
-        ui.add(description);
-    }
-
-    fn render_installation_instruction(&self, ui: &mut Ui, candidate: &Candidate) {
-        ui.with_layout(Layout::right_to_left(), |ui| {
-            let installation =
-                Label::new(&candidate.installation).text_style(eframe::egui::TextStyle::Body);
-            ui.add(installation);
-        });
     }
 
     pub fn render_footer(&self, ctx: &CtxRef) {

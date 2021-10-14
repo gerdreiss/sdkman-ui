@@ -192,7 +192,6 @@ pub fn fetch_candidate_versions(
         "".to_owned(),
         Vec::new(),
     ))?;
-    println!("Querying: {}", url);
     let res = reqwest::blocking::get(url)?;
     let status: StatusCode = res.status();
     if status.is_success() {
