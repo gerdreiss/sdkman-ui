@@ -1,4 +1,5 @@
 use eframe::egui::*;
+use image::GenericImageView;
 use std::borrow::Cow;
 
 const PADDING: f32 = 8.0;
@@ -53,7 +54,7 @@ impl Candidates {
     pub fn new(models: &Vec<api::CandidateModel>) -> Candidates {
         Candidates {
             app_name: "sdkman-ui",
-            app_heading: "candidates",
+            app_heading: "sdkman candidates",
             candidates: models
                 .iter()
                 .map(|model| Candidate::from_model(model))
@@ -99,7 +100,18 @@ impl Candidates {
             menu::bar(ui, |ui| {
                 // logo
                 ui.with_layout(Layout::left_to_right(), |ui| {
-                    ui.add(Label::new("📓").text_style(TextStyle::Heading));
+                    let image = image::open("ui/assets/logo.png").unwrap();
+                    let size = (image.width() as usize, image.height() as usize);
+                    let pixels: Vec<Color32> = image
+                        .to_rgba8()
+                        .into_vec()
+                        .chunks(4)
+                        .map(|p| Color32::from_rgba_unmultiplied(p[0], p[1], p[2], p[3]))
+                        .collect();
+                    let tex_alloc = frame.tex_allocator();
+                    let texture_id = tex_alloc.alloc_srgba_premultiplied(size, &pixels);
+                    ui.image(texture_id, [56., 56.]);
+                    //ui.add(Label::new("📓").text_style(TextStyle::Heading));
                 });
                 // Candidates
                 ui.vertical_centered(|ui| {

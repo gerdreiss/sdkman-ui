@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 api = { path = "../api" }
 eframe = "0.14"
+image = "0.23"
