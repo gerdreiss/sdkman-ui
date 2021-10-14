@@ -23,17 +23,13 @@ impl Version {
             current: false,
         }
     }
-    pub fn from_vendor_and_vendor(vendor: &String, value: &String) -> Self {
+    pub fn from_vendor_and_version(vendor: &String, value: &String) -> Self {
         Self {
             vendor: Some(String::from_str(vendor).unwrap_or_default()),
             value: String::from_str(value).unwrap_or_default(),
             installed: false,
             current: false,
         }
-    }
-    pub fn with_vendor(&mut self, vendor: String) -> &mut Self {
-        self.vendor = Some(vendor);
-        self
     }
 }
 
@@ -314,12 +310,8 @@ fn parse_available_java_versions(input: String) -> Vec<Version> {
 
     let mut result: Vec<Version> = Vec::new();
     for (vendor, version) in versions {
-        result.push(Version::from_vendor_and_vendor(&vendor, &version));
+        result.push(Version::from_vendor_and_version(&vendor, &version));
     }
-    result.sort_by(|v1, v2| {
-        let s1 = &v1.value;
-        let s2 = &v2.value;
-        alphanumeric_sort::compare_str(s1, s2)
-    });
+    result.sort_by(|v1, v2| alphanumeric_sort::compare_str(&v2.value, &v1.value));
     result
 }

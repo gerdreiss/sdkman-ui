@@ -311,10 +311,14 @@ impl Candidates {
                 });
                 // render all available versions
                 ui.add_space(PADDING);
-                let available_versions =
-                    Label::new(&selected_candidate.as_ref().unwrap().versions.join("\n"))
-                        .wrap(false)
-                        .text_style(eframe::egui::TextStyle::Body);
+                let available_versions = Label::new(
+                    selected_candidate
+                        .as_ref()
+                        .map(|c| c.versions.join("\n"))
+                        .unwrap_or_default(),
+                )
+                .wrap(false)
+                .text_style(eframe::egui::TextStyle::Body);
                 ui.add(available_versions);
             }
             ui.add_space(3. * PADDING);
