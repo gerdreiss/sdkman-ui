@@ -11,3 +11,4 @@ reqwest = { version = "0.11", features = ["blocking"] }
 thiserror = "1"
 url = "2.2"
 urlencoding = "2.1"
+alphanumeric-sort = "1.4"

@@ -20,6 +20,7 @@ pub struct Candidate {
     description: String,
     installation_instruction: String,
     available_versions_text: String,
+    versions: Vec<String>,
 }
 
 impl Candidate {
@@ -34,6 +35,7 @@ impl Candidate {
                 .available_versions_text()
                 .unwrap_or(&String::new())
                 .clone(),
+            versions: model.versions().iter().map(|v| v.to_string()).collect(),
         }
     }
     fn to_model(&self) -> api::CandidateModel {
@@ -156,6 +158,7 @@ impl Candidates {
                 // controls
                 ui.with_layout(Layout::right_to_left(), |ui| {
                     ui.add_space(10.);
+                    // Close button
                     if ui
                         .add(Button::new("❌").text_style(TextStyle::Body))
                         .on_hover_text("Close")
@@ -163,6 +166,7 @@ impl Candidates {
                     {
                         frame.quit();
                     }
+                    // Refresh button
                     if ui
                         .add(Button::new("🔄").text_style(TextStyle::Body))
                         .on_hover_text("Refresh")
@@ -183,6 +187,7 @@ impl Candidates {
                             }
                         }
                     }
+                    // Search buttno
                     let _search_btn = ui
                         .add(Button::new("🔎").text_style(TextStyle::Body))
                         .on_hover_text("Search");
@@ -275,18 +280,18 @@ impl Candidates {
                 ui.add_space(PADDING);
                 ui.horizontal(|ui| {
                     ui.with_layout(Layout::left_to_right(), |ui| {
-                        // render all available versions
                         ui.add_space(PADDING);
-                        let available_versions_text = Label::new(
-                            &selected_candidate.as_ref().unwrap().available_versions_text,
-                        )
-                        .wrap(true)
-                        .text_style(eframe::egui::TextStyle::Body);
-                        ui.add(available_versions_text);
-                        ui.add_space(PADDING);
+                        ui.add(
+                            Label::new(format!(
+                                "Available {} versions",
+                                selected_candidate.as_ref().unwrap().name
+                            ))
+                            .wrap(true)
+                            .text_style(eframe::egui::TextStyle::Body),
+                        );
                     });
                     ui.with_layout(Layout::right_to_left(), |ui| {
-                        ui.add_space(10.);
+                        ui.add_space(PADDING);
                         ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
                             let _close_btn = ui
                                 .add(
@@ -296,11 +301,7 @@ impl Candidates {
                                         .sense(Sense::click()),
                                 )
                                 .on_hover_ui(|ui| {
-                                    show_tooltip_text(
-                                        ui.ctx(),
-                                        Id::new(&candidate.name),
-                                        "Click to close all available versions",
-                                    );
+                                    show_tooltip_text(ui.ctx(), Id::new(&candidate.name), "Close");
                                 });
                             if _close_btn.clicked() {
                                 *selected_candidate = None;
@@ -308,8 +309,15 @@ impl Candidates {
                         });
                     });
                 });
+                // render all available versions
+                ui.add_space(PADDING);
+                let available_versions =
+                    Label::new(&selected_candidate.as_ref().unwrap().versions.join("\n"))
+                        .wrap(false)
+                        .text_style(eframe::egui::TextStyle::Body);
+                ui.add(available_versions);
             }
-            ui.add(Separator::default());
+            ui.add_space(3. * PADDING);
         }
 
         ui.add_space(7. * PADDING);

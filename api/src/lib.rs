@@ -6,6 +6,48 @@ use url::Url;
 
 const BASE_URL: &str = "https://api.sdkman.io/2";
 
+#[derive(Debug, Clone)]
+pub struct Version {
+    vendor: Option<String>,
+    value: String,
+    installed: bool,
+    current: bool,
+}
+
+impl Version {
+    pub fn from_value(value: &str) -> Self {
+        Self {
+            vendor: None,
+            value: String::from_str(value).unwrap_or_default(),
+            installed: false,
+            current: false,
+        }
+    }
+    pub fn from_vendor_and_vendor(vendor: &String, value: &String) -> Self {
+        Self {
+            vendor: Some(String::from_str(vendor).unwrap_or_default()),
+            value: String::from_str(value).unwrap_or_default(),
+            installed: false,
+            current: false,
+        }
+    }
+    pub fn with_vendor(&mut self, vendor: String) -> &mut Self {
+        self.vendor = Some(vendor);
+        self
+    }
+}
+
+impl ToString for Version {
+    fn to_string(&self) -> String {
+        format!(
+            " {} {} {}",
+            if self.installed { ">" } else { " " },
+            if self.current { "*" } else { " " },
+            self.value
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct CandidateModel {
     name: String,
@@ -14,9 +56,7 @@ pub struct CandidateModel {
     homepage: String,
     default_version: String,
     available_versions_text: Option<String>,
-    available_versions: Vec<String>,
-    installed_versions: Vec<String>,
-    current_version: Option<String>,
+    versions: Vec<Version>,
 }
 
 impl CandidateModel {
@@ -33,10 +73,8 @@ impl CandidateModel {
             description,
             homepage,
             default_version,
-            current_version: None,
             available_versions_text: None,
-            available_versions: Vec::new(),
-            installed_versions: Vec::new(),
+            versions: Vec::new(),
         }
     }
     pub fn name(&self) -> &String {
@@ -54,29 +92,18 @@ impl CandidateModel {
     pub fn default_version(&self) -> &String {
         &self.default_version
     }
-    pub fn current_version(&self) -> Option<&String> {
-        self.current_version.as_ref()
-    }
     pub fn available_versions_text(&self) -> Option<&String> {
         self.available_versions_text.as_ref()
     }
-    pub fn available_versions(&self) -> &Vec<String> {
-        &self.available_versions
-    }
-    pub fn with_current_version(&mut self, current_version: String) -> &mut Self {
-        self.current_version = Some(current_version);
-        self
+    pub fn versions(&self) -> Vec<String> {
+        self.versions.iter().map(|v| v.to_string()).collect()
     }
     pub fn with_available_versions_text(&mut self, versions: String) -> &mut Self {
         self.available_versions_text = Some(versions);
         self
     }
-    pub fn with_available_versions(&mut self, versions: Vec<String>) -> &mut Self {
-        self.available_versions = versions;
-        self
-    }
-    pub fn with_installed_versions(&mut self, versions: Vec<String>) -> &mut Self {
-        self.installed_versions = versions;
+    pub fn with_versions(&mut self, versions: &Vec<Version>) -> &mut Self {
+        self.versions = versions.to_vec();
         self
     }
 }
@@ -154,24 +181,22 @@ pub enum SdkmanApiError {
 }
 
 type BinaryName = String;
-type CurrentVersion = String;
-type InstalledVersions = Vec<String>;
 
 enum Endpoint {
     CandidateList,
-    CandidateVersions(BinaryName, CurrentVersion, InstalledVersions),
+    CandidateVersions(BinaryName),
 }
 
 impl ToString for Endpoint {
     fn to_string(&self) -> String {
         match self {
             Self::CandidateList => "/candidates/list".to_string(),
-            Self::CandidateVersions(candidate, current, installed) => format!(
-                "/candidates/{}/darwinx64/versions/list?current={}&installed={}",
-                candidate,
-                current,
-                installed.join(",")
-            ),
+            Self::CandidateVersions(candidate) => {
+                format!(
+                    "/candidates/{}/darwinx64/versions/list?installed=",
+                    candidate
+                )
+            }
         }
     }
 }
@@ -184,7 +209,7 @@ pub fn fetch_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
 }
 
 fn fetch_installed_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
-    todo!()
+    Ok(Vec::new())
 }
 
 fn fetch_remote_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
@@ -204,25 +229,20 @@ fn fetch_remote_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
 pub fn fetch_candidate_versions(
     candidate: &mut CandidateModel,
 ) -> Result<&CandidateModel, SdkmanApiError> {
-    let url = prepare_url(Endpoint::CandidateVersions(
-        candidate.binary_name().clone(),
-        "".to_owned(),
-        Vec::new(),
-    ))?;
+    let url = prepare_url(Endpoint::CandidateVersions(candidate.binary_name().clone()))?;
     let res = reqwest::blocking::get(url)?;
     let status: StatusCode = res.status();
-    if status.is_success() {
-        return res
-            .text()
+    return if status.is_success() {
+        res.text()
             .map(move |text| {
                 &*candidate
                     .with_available_versions_text(text.clone())
-                    .with_available_versions(parse_available_versions(text.clone()))
+                    .with_versions(&parse_available_versions(text.clone()))
             })
-            .map_err(|err| SdkmanApiError::RequestFailed(err));
+            .map_err(|err| SdkmanApiError::RequestFailed(err))
     } else {
-        return Err(SdkmanApiError::ServerError(status.as_u16()));
-    }
+        Err(SdkmanApiError::ServerError(status.as_u16()))
+    };
 }
 
 fn prepare_url(endpoint: Endpoint) -> Result<String, SdkmanApiError> {
@@ -245,7 +265,7 @@ fn parse_candidates(input: String) -> Vec<CandidateModel> {
         .collect()
 }
 
-fn parse_available_versions(input: String) -> Vec<String> {
+fn parse_available_versions(input: String) -> Vec<Version> {
     if input.contains("Available Java Versions") {
         parse_available_java_versions(input)
     } else {
@@ -255,27 +275,51 @@ fn parse_available_versions(input: String) -> Vec<String> {
             .take_while(|line| !line.is_empty() && line.chars().next().unwrap() != '=')
             .collect::<Vec<&str>>()
             .join(" ");
+        let strs: Vec<&str> = text.split_whitespace().collect();
 
-        convert_strs_to_strings(text.split_whitespace().collect())
+        let mut result: Vec<String> = Vec::new();
+        for v in strs {
+            result.push(v.to_owned());
+        }
+        result.sort_by(|s1, s2| alphanumeric_sort::compare_str(s2, s1));
+        result.iter().map(|v| Version::from_value(v)).collect()
     }
 }
 
-fn parse_available_java_versions(input: String) -> Vec<String> {
+fn parse_available_java_versions(input: String) -> Vec<Version> {
     let versions = input
         .lines()
         .skip(5)
         .take_while(|line| !line.is_empty() && line.chars().next().unwrap() != '=')
-        .map(|line| line.split_terminator("|").last().unwrap().trim())
-        .collect::<Vec<&str>>();
+        .map(|line| {
+            let it: Vec<&str> = line
+                .split_terminator("|")
+                .enumerate()
+                .filter(|&(i, _)| i == 0 || i == 5)
+                .map(|(_, v)| v)
+                .collect();
+            (
+                it.iter()
+                    .next()
+                    .map(|s| String::from_str(s).unwrap_or_default())
+                    .unwrap_or_default(),
+                it.iter()
+                    .skip(1)
+                    .next()
+                    .map(|s| String::from_str(s).unwrap_or_default())
+                    .unwrap_or_default(),
+            )
+        })
+        .collect::<Vec<(String, String)>>();
 
-    convert_strs_to_strings(versions)
-}
-
-fn convert_strs_to_strings(strs: Vec<&str>) -> Vec<String> {
-    let mut result: Vec<String> = Vec::new();
-    for v in strs {
-        result.push(v.to_owned());
+    let mut result: Vec<Version> = Vec::new();
+    for (vendor, version) in versions {
+        result.push(Version::from_vendor_and_vendor(&vendor, &version));
     }
-
+    result.sort_by(|v1, v2| {
+        let s1 = &v1.value;
+        let s2 = &v2.value;
+        alphanumeric_sort::compare_str(s1, s2)
+    });
     result
 }
