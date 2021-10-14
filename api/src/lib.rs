@@ -6,22 +6,6 @@ use url::Url;
 
 const BASE_URL: &str = "https://api.sdkman.io/2";
 
-#[derive(thiserror::Error, Debug)]
-pub enum SdkmanApiError {
-    #[error("Failed to decode URL")]
-    FailedToDecodeUrl(#[from] std::string::FromUtf8Error),
-    #[error("Failed converting response to string")]
-    FailedResponseToString(#[from] std::io::Error),
-    #[error("Url parsing failed")]
-    UrlParsing(#[from] url::ParseError),
-    #[error("Request failed")]
-    RequestFailed(#[from] reqwest::Error),
-    #[error("Bad request: {0}")]
-    BadRequest(&'static str),
-    #[error("Server error: {0}")]
-    ServerError(u16),
-}
-
 #[derive(Debug)]
 pub struct CandidateModel {
     name: String,
@@ -29,9 +13,10 @@ pub struct CandidateModel {
     description: String,
     homepage: String,
     default_version: String,
+    available_versions_text: Option<String>,
+    available_versions: Vec<String>,
+    installed_versions: Vec<String>,
     current_version: Option<String>,
-    available_versions: Option<String>,
-    versions: Vec<String>,
 }
 
 impl CandidateModel {
@@ -49,8 +34,9 @@ impl CandidateModel {
             homepage,
             default_version,
             current_version: None,
-            available_versions: None,
-            versions: Vec::new(),
+            available_versions_text: None,
+            available_versions: Vec::new(),
+            installed_versions: Vec::new(),
         }
     }
     pub fn name(&self) -> &String {
@@ -71,22 +57,26 @@ impl CandidateModel {
     pub fn current_version(&self) -> Option<&String> {
         self.current_version.as_ref()
     }
-    pub fn available_versions(&self) -> Option<&String> {
-        self.available_versions.as_ref()
+    pub fn available_versions_text(&self) -> Option<&String> {
+        self.available_versions_text.as_ref()
     }
-    pub fn versions(&self) -> &Vec<String> {
-        &self.versions
+    pub fn available_versions(&self) -> &Vec<String> {
+        &self.available_versions
     }
     pub fn with_current_version(&mut self, current_version: String) -> &mut Self {
         self.current_version = Some(current_version);
         self
     }
-    pub fn with_available_versions(&mut self, versions: String) -> &mut Self {
-        self.available_versions = Some(versions);
+    pub fn with_available_versions_text(&mut self, versions: String) -> &mut Self {
+        self.available_versions_text = Some(versions);
         self
     }
-    pub fn with_versions(&mut self, versions: Vec<String>) -> &mut Self {
-        self.versions = versions;
+    pub fn with_available_versions(&mut self, versions: Vec<String>) -> &mut Self {
+        self.available_versions = versions;
+        self
+    }
+    pub fn with_installed_versions(&mut self, versions: Vec<String>) -> &mut Self {
+        self.installed_versions = versions;
         self
     }
 }
@@ -147,6 +137,22 @@ impl FromStr for CandidateModel {
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum SdkmanApiError {
+    #[error("Failed to decode URL")]
+    FailedToDecodeUrl(#[from] std::string::FromUtf8Error),
+    #[error("Failed converting response to string")]
+    FailedResponseToString(#[from] std::io::Error),
+    #[error("Url parsing failed")]
+    UrlParsing(#[from] url::ParseError),
+    #[error("Request failed")]
+    RequestFailed(#[from] reqwest::Error),
+    #[error("Bad request: {0}")]
+    BadRequest(&'static str),
+    #[error("Server error: {0}")]
+    ServerError(u16),
+}
+
 type BinaryName = String;
 type CurrentVersion = String;
 type InstalledVersions = Vec<String>;
@@ -171,6 +177,17 @@ impl ToString for Endpoint {
 }
 
 pub fn fetch_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
+    fetch_remote_candidates().and_then(|remote_candidates| {
+        // todo merge local into remote
+        fetch_installed_candidates().and_then(|_local_candidates| Ok(remote_candidates))
+    })
+}
+
+fn fetch_installed_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
+    todo!()
+}
+
+fn fetch_remote_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
     let url = prepare_url(Endpoint::CandidateList)?;
     let res = reqwest::blocking::get(url)?;
     let status: StatusCode = res.status();
@@ -197,7 +214,11 @@ pub fn fetch_candidate_versions(
     if status.is_success() {
         return res
             .text()
-            .map(move |text| &*candidate.with_available_versions(text))
+            .map(move |text| {
+                &*candidate
+                    .with_available_versions_text(text.clone())
+                    .with_available_versions(parse_available_versions(text.clone()))
+            })
             .map_err(|err| SdkmanApiError::RequestFailed(err));
     } else {
         return Err(SdkmanApiError::ServerError(status.as_u16()));
@@ -222,4 +243,39 @@ fn parse_candidates(input: String) -> Vec<CandidateModel> {
         .filter(|x| !x.trim().is_empty())
         .map(|desc| CandidateModel::from_str(desc).unwrap())
         .collect()
+}
+
+fn parse_available_versions(input: String) -> Vec<String> {
+    if input.contains("Available Java Versions") {
+        parse_available_java_versions(input)
+    } else {
+        let text = input
+            .lines()
+            .skip(3)
+            .take_while(|line| !line.is_empty() && line.chars().next().unwrap() != '=')
+            .collect::<Vec<&str>>()
+            .join(" ");
+
+        convert_strs_to_strings(text.split_whitespace().collect())
+    }
+}
+
+fn parse_available_java_versions(input: String) -> Vec<String> {
+    let versions = input
+        .lines()
+        .skip(5)
+        .take_while(|line| !line.is_empty() && line.chars().next().unwrap() != '=')
+        .map(|line| line.split_terminator("|").last().unwrap().trim())
+        .collect::<Vec<&str>>();
+
+    convert_strs_to_strings(versions)
+}
+
+fn convert_strs_to_strings(strs: Vec<&str>) -> Vec<String> {
+    let mut result: Vec<String> = Vec::new();
+    for v in strs {
+        result.push(v.to_owned());
+    }
+
+    result
 }

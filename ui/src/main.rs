@@ -34,9 +34,15 @@ impl App for Candidates {
 }
 
 fn main() {
-    let candidates = api::fetch_candidates().unwrap();
-    let app = Candidates::new(&candidates);
-    let mut win_option = NativeOptions::default();
-    win_option.initial_window_size = Some(Vec2::new(1024., 960.));
-    run_native(Box::new(app), win_option);
+    match api::fetch_candidates() {
+        Ok(candidates) => {
+            let app = Candidates::new(&candidates);
+            let mut win_option = NativeOptions::default();
+            win_option.initial_window_size = Some(Vec2::new(1024., 960.));
+            run_native(Box::new(app), win_option);
+        }
+        Err(e) => {
+            println!("Failed to start the application with:\n{}", e)
+        }
+    }
 }

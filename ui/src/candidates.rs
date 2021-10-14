@@ -19,7 +19,7 @@ pub struct Candidate {
     url: String,
     description: String,
     installation_instruction: String,
-    available_versions: String,
+    available_versions_text: String,
 }
 
 impl Candidate {
@@ -30,7 +30,10 @@ impl Candidate {
             url: model.homepage().clone(),
             description: model.description().clone(),
             installation_instruction: format!("$ sdk install {}", model.binary_name()),
-            available_versions: model.available_versions().unwrap_or(&String::new()).clone(),
+            available_versions_text: model
+                .available_versions_text()
+                .unwrap_or(&String::new())
+                .clone(),
         }
     }
     fn to_model(&self) -> api::CandidateModel {
@@ -274,11 +277,12 @@ impl Candidates {
                     ui.with_layout(Layout::left_to_right(), |ui| {
                         // render all available versions
                         ui.add_space(PADDING);
-                        let available_versions =
-                            Label::new(&selected_candidate.as_ref().unwrap().available_versions)
-                                .wrap(true)
-                                .text_style(eframe::egui::TextStyle::Body);
-                        ui.add(available_versions);
+                        let available_versions_text = Label::new(
+                            &selected_candidate.as_ref().unwrap().available_versions_text,
+                        )
+                        .wrap(true)
+                        .text_style(eframe::egui::TextStyle::Body);
+                        ui.add(available_versions_text);
                         ui.add_space(PADDING);
                     });
                     ui.with_layout(Layout::right_to_left(), |ui| {
