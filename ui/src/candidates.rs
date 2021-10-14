@@ -7,6 +7,12 @@ const WHITE: Color32 = Color32::from_rgb(255, 255, 255);
 const CYAN: Color32 = Color32::from_rgb(0, 255, 255);
 
 #[derive(PartialEq)]
+pub struct Logo {
+    pub size: (usize, usize),
+    pub pixels: Vec<Color32>,
+}
+
+#[derive(PartialEq)]
 pub struct Candidate {
     name: String,
     default_version: String,
@@ -46,21 +52,39 @@ impl Candidate {
 pub struct Candidates {
     app_name: &'static str,
     app_heading: &'static str,
+    logo: Logo,
     candidates: Vec<Candidate>,
     selected_candidate: Option<Candidate>,
 }
 
-impl Candidates {
-    pub fn new(models: &Vec<api::CandidateModel>) -> Candidates {
-        Candidates {
+impl Default for Candidates {
+    fn default() -> Self {
+        let image = image::open("ui/assets/logo.png").unwrap();
+        let size = (image.width() as usize, image.height() as usize);
+        let pixels: Vec<Color32> = image
+            .to_rgba8()
+            .into_vec()
+            .chunks(4)
+            .map(|p| Color32::from_rgba_unmultiplied(p[0], p[1], p[2], p[3]))
+            .collect();
+        Self {
             app_name: "sdkman-ui",
             app_heading: "sdkman candidates",
-            candidates: models
-                .iter()
-                .map(|model| Candidate::from_model(model))
-                .collect(),
+            logo: Logo { size, pixels },
+            candidates: Vec::new(),
             selected_candidate: None,
         }
+    }
+}
+
+impl Candidates {
+    pub fn new(models: &Vec<api::CandidateModel>) -> Candidates {
+        let mut app = Candidates::default();
+        app.candidates = models
+            .iter()
+            .map(|model| Candidate::from_model(model))
+            .collect();
+        app
     }
 
     pub fn app_name(&self) -> &str {
@@ -100,18 +124,10 @@ impl Candidates {
             menu::bar(ui, |ui| {
                 // logo
                 ui.with_layout(Layout::left_to_right(), |ui| {
-                    let image = image::open("ui/assets/logo.png").unwrap();
-                    let size = (image.width() as usize, image.height() as usize);
-                    let pixels: Vec<Color32> = image
-                        .to_rgba8()
-                        .into_vec()
-                        .chunks(4)
-                        .map(|p| Color32::from_rgba_unmultiplied(p[0], p[1], p[2], p[3]))
-                        .collect();
+                    let logo = &self.logo;
                     let tex_alloc = frame.tex_allocator();
-                    let texture_id = tex_alloc.alloc_srgba_premultiplied(size, &pixels);
+                    let texture_id = tex_alloc.alloc_srgba_premultiplied(logo.size, &logo.pixels);
                     ui.image(texture_id, [56., 56.]);
-                    //ui.add(Label::new("📓").text_style(TextStyle::Heading));
                 });
                 // Candidates
                 ui.vertical_centered(|ui| {
@@ -136,6 +152,7 @@ impl Candidates {
         let Self {
             app_name: _,
             app_heading: _,
+            logo: _,
             candidates,
             selected_candidate,
         } = self;
