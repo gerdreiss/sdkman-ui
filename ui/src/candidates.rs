@@ -18,7 +18,7 @@ pub struct Candidate {
     default_version: String,
     url: String,
     description: String,
-    installation: String,
+    installation_instruction: String,
     available_versions: String,
 }
 
@@ -29,14 +29,14 @@ impl Candidate {
             default_version: model.default_version().clone(),
             url: model.homepage().clone(),
             description: model.description().clone(),
-            installation: format!("$ sdk install {}", model.binary_name()),
+            installation_instruction: format!("$ sdk install {}", model.binary_name()),
             available_versions: model.available_versions().unwrap_or(&String::new()).clone(),
         }
     }
     fn to_model(&self) -> api::CandidateModel {
         api::CandidateModel::new(
             self.name.clone(),
-            self.installation
+            self.installation_instruction
                 .split_whitespace()
                 .last()
                 .unwrap_or(&self.name.to_lowercase())
@@ -91,10 +91,6 @@ impl Candidates {
         self.app_name
     }
 
-    pub fn app_heading(&self) -> &str {
-        self.app_heading
-    }
-
     pub fn configure_fonts(&self, ctx: &CtxRef) {
         let mut font_def = FontDefinitions::default();
         font_def.font_data.insert(
@@ -117,31 +113,76 @@ impl Candidates {
         ctx.set_fonts(font_def);
     }
 
-    pub(crate) fn render_top_panel(&self, ctx: &CtxRef, frame: &mut eframe::epi::Frame<'_>) {
+    pub(crate) fn render_top_panel(&mut self, ctx: &CtxRef, frame: &mut eframe::epi::Frame<'_>) {
+        let Self {
+            app_name: _,
+            app_heading,
+            logo,
+            candidates,
+            selected_candidate,
+        } = self;
         // define a TopBottomPanel widget
         TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.add_space(10.);
             menu::bar(ui, |ui| {
                 // logo
                 ui.with_layout(Layout::left_to_right(), |ui| {
-                    let logo = &self.logo;
-                    let tex_alloc = frame.tex_allocator();
-                    let texture_id = tex_alloc.alloc_srgba_premultiplied(logo.size, &logo.pixels);
-                    ui.image(texture_id, [56., 56.]);
+                    let texture_id = frame
+                        .tex_allocator()
+                        .alloc_srgba_premultiplied(logo.size, &logo.pixels);
+                    if ui
+                        .add(Image::new(texture_id, [56., 56.]).sense(Sense::click()))
+                        .on_hover_ui(|ui| {
+                            ui.ctx().output().cursor_icon = CursorIcon::PointingHand;
+                            show_tooltip_text(ui.ctx(), Id::new("sdkman-logo"), "Go to sdkman.io");
+                        })
+                        .clicked()
+                    {
+                        println!("Are we gonna open it?");
+                        let modifiers = ui.ctx().input().modifiers;
+                        ui.ctx().output().open_url = Some(output::OpenUrl {
+                            url: "https://sdkman.io/".to_owned(),
+                            new_tab: modifiers.any(),
+                        });
+                    }
                 });
                 // Candidates
                 ui.vertical_centered(|ui| {
-                    ui.heading(self.app_heading());
+                    ui.heading(*app_heading);
                 });
                 // controls
                 ui.with_layout(Layout::right_to_left(), |ui| {
                     ui.add_space(10.);
-                    let _close_btn = ui.add(Button::new("❌").text_style(TextStyle::Body));
-                    if _close_btn.clicked() {
+                    if ui
+                        .add(Button::new("❌").text_style(TextStyle::Body))
+                        .on_hover_text("Close")
+                        .clicked()
+                    {
                         frame.quit();
                     }
-                    let _refresh_btn = ui.add(Button::new("🔄").text_style(TextStyle::Body));
-                    let _theme_btn = ui.add(Button::new("🌙").text_style(TextStyle::Body));
+                    if ui
+                        .add(Button::new("🔄").text_style(TextStyle::Body))
+                        .on_hover_text("Refresh")
+                        .clicked()
+                    {
+                        match api::fetch_candidates() {
+                            Ok(models) => {
+                                let cands: Vec<Candidate> = models
+                                    .iter()
+                                    .map(|model| Candidate::from_model(model))
+                                    .collect();
+                                *candidates = cands;
+                                *selected_candidate = None;
+                            }
+                            Err(e) => {
+                                *selected_candidate = None;
+                                println!("Refreshing the list of candidates failed with:\n{}", e)
+                            }
+                        }
+                    }
+                    let _search_btn = ui
+                        .add(Button::new("🔎").text_style(TextStyle::Body))
+                        .on_hover_text("Search");
                 });
             });
             ui.add_space(10.);
@@ -220,8 +261,8 @@ impl Candidates {
             ui.add_space(PADDING);
             // render installation instruction
             ui.with_layout(Layout::right_to_left(), |ui| {
-                let installation =
-                    Label::new(&candidate.installation).text_style(eframe::egui::TextStyle::Body);
+                let installation = Label::new(&candidate.installation_instruction)
+                    .text_style(eframe::egui::TextStyle::Body);
                 ui.add(installation);
             });
 
