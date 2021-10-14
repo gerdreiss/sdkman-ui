@@ -122,14 +122,15 @@ impl Candidates {
 
     pub fn render_candidates(&mut self, ui: &mut Ui) {
         let Self {
-            app_name,
-            app_heading,
+            app_name: _,
+            app_heading: _,
             candidates,
             selected_candidate,
         } = self;
 
         // render candidates
         for curr in candidates {
+            // check whether to display the selected candidate only
             let candidate = if selected_candidate.is_none()
                 || curr.name == selected_candidate.as_ref().unwrap().name
             {
