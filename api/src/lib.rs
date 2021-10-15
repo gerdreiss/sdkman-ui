@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
 use lazy_static::lazy_static;
+use merge::Merge;
 use regex::Regex;
 use reqwest::StatusCode;
-use std::str::FromStr;
 use url::Url;
 
 const BASE_URL: &str = "https://api.sdkman.io/2";
@@ -23,7 +25,7 @@ impl Version {
             current: false,
         }
     }
-    pub fn from_vendor_and_version(vendor: &String, value: &String) -> Self {
+    pub fn from_vendor_and_version(vendor: &str, value: &str) -> Self {
         Self {
             vendor: Some(String::from_str(vendor).unwrap_or_default()),
             value: String::from_str(value).unwrap_or_default(),
@@ -71,6 +73,17 @@ impl CandidateModel {
             default_version,
             available_versions_text: None,
             versions: Vec::new(),
+        }
+    }
+    pub fn local(binary_name: String, versions: Vec<Version>) -> Self {
+        CandidateModel {
+            name: String::new(),
+            binary_name,
+            description: String::new(),
+            homepage: String::new(),
+            default_version: String::new(),
+            available_versions_text: None,
+            versions,
         }
     }
     pub fn name(&self) -> &String {
@@ -160,6 +173,41 @@ impl FromStr for CandidateModel {
     }
 }
 
+impl Merge for CandidateModel {
+    fn merge(&mut self, other: Self) {
+        let Self {
+            name,
+            binary_name,
+            description,
+            homepage,
+            default_version,
+            available_versions_text,
+            versions,
+        } = self;
+        if name.is_empty() {
+            *name = other.name;
+        }
+        if binary_name.is_empty() {
+            *binary_name = other.binary_name;
+        }
+        if description.is_empty() {
+            *description = other.description;
+        }
+        if homepage.is_empty() {
+            *homepage = other.homepage;
+        }
+        if default_version.is_empty() {
+            *default_version = other.default_version;
+        }
+        if available_versions_text.is_none() {
+            *available_versions_text = other.available_versions_text;
+        }
+        if versions.is_empty() {
+            *versions = other.versions;
+        }
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum SdkmanApiError {
     #[error("Failed to decode URL")]
@@ -199,27 +247,43 @@ impl ToString for Endpoint {
 
 pub fn fetch_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
     fetch_remote_candidates().and_then(|remote_candidates| {
-        // todo merge local into remote
-        fetch_installed_candidates().and_then(|_local_candidates| Ok(remote_candidates))
+        fetch_installed_candidates().and_then(|local_candidates| {
+            for mut remote in &remote_candidates {
+                for local in &local_candidates {
+                    // todo merge local into remote
+                    //remote.merge(local)
+                }
+            }
+
+            return Ok(remote_candidates);
+        })
     })
 }
 
 fn fetch_installed_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
-    Ok(Vec::new())
+    // read installed candidates from the disk
+    Ok(vec![CandidateModel::local(
+        "java".to_owned(),
+        vec![Version {
+            vendor: Some("Temurin".to_owned()),
+            value: "17.0.0-tem".to_owned(),
+            installed: true,
+            current: true,
+        }],
+    )])
 }
 
 fn fetch_remote_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
     let url = prepare_url(Endpoint::CandidateList)?;
     let res = reqwest::blocking::get(url)?;
     let status: StatusCode = res.status();
-    if status.is_success() {
-        return res
-            .text()
+    return if status.is_success() {
+        res.text()
             .map(|text| parse_candidates(text))
-            .map_err(|err| SdkmanApiError::RequestFailed(err));
+            .map_err(|err| SdkmanApiError::RequestFailed(err))
     } else {
-        return Err(SdkmanApiError::ServerError(status.as_u16()));
-    }
+        Err(SdkmanApiError::ServerError(status.as_u16()))
+    };
 }
 
 pub fn fetch_candidate_versions(
