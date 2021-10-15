@@ -312,6 +312,5 @@ fn parse_available_java_versions(input: String) -> Vec<Version> {
     for (vendor, version) in versions {
         result.push(Version::from_vendor_and_version(&vendor, &version));
     }
-    result.sort_by(|v1, v2| alphanumeric_sort::compare_str(&v2.value, &v1.value));
     result
 }

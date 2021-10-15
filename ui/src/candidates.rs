@@ -64,7 +64,7 @@ pub struct Candidates {
 
 impl Default for Candidates {
     fn default() -> Self {
-        let image = image::open("ui/assets/logo.png").unwrap();
+        let image = image::load_from_memory(include_bytes!("../assets/logo.png")).unwrap();
         let size = (image.width() as usize, image.height() as usize);
         let pixels: Vec<Color32> = image
             .to_rgba8()
@@ -187,7 +187,7 @@ impl Candidates {
                             }
                         }
                     }
-                    // Search buttno
+                    // Search button
                     let _search_btn = ui
                         .add(Button::new("🔎").text_style(TextStyle::Body))
                         .on_hover_text("Search");
@@ -317,7 +317,6 @@ impl Candidates {
                         .map(|c| c.versions.join("\n"))
                         .unwrap_or_default(),
                 )
-                .wrap(false)
                 .text_style(eframe::egui::TextStyle::Body);
                 ui.add(available_versions);
             }
