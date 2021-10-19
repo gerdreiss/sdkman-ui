@@ -135,30 +135,12 @@ impl FromStr for Version {
         if input.contains(" | ") {
             let parts: Vec<&str> = input.split_terminator("|").map(|s| s.trim()).collect();
             Ok(Version::JavaVersion(
-                parts
-                    .get(0)
-                    .map(|p| String::from_str(p).unwrap_or_default())
-                    .unwrap_or_default(),
-                parts
-                    .get(1)
-                    .map(|p| String::from_str(p).unwrap_or_default())
-                    .unwrap_or_default(),
-                parts
-                    .get(2)
-                    .map(|p| String::from_str(p).unwrap_or_default())
-                    .unwrap_or_default(),
-                parts
-                    .get(3)
-                    .map(|p| String::from_str(p).unwrap_or_default())
-                    .unwrap_or_default(),
-                parts
-                    .get(4)
-                    .map(|p| String::from_str(p).unwrap_or_default())
-                    .unwrap_or_default(),
-                parts
-                    .get(5)
-                    .map(|p| String::from_str(p).unwrap_or_default())
-                    .unwrap_or_default(),
+                index_to_string(0, &parts),
+                index_to_string(1, &parts),
+                index_to_string(2, &parts),
+                index_to_string(3, &parts),
+                index_to_string(4, &parts),
+                index_to_string(5, &parts),
             ))
         } else {
             Ok(Version::OtherVersion(
@@ -166,6 +148,13 @@ impl FromStr for Version {
             ))
         }
     }
+}
+
+fn index_to_string(index: usize, parts: &Vec<&str>) -> String {
+    parts
+        .get(index)
+        .map(|p| String::from_str(p).unwrap_or_default())
+        .unwrap_or_default()
 }
 
 impl FromStr for CandidateModel {
