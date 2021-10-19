@@ -181,14 +181,37 @@ impl Candidates {
                             }
                             Err(e) => {
                                 *selected_candidate = None;
-                                println!("Refreshing the list of candidates failed with:\n{}", e)
+                                tracing::error!(
+                                    "Refreshing the list of candidates failed with:\n{}",
+                                    e
+                                )
                             }
                         }
                     }
                     // Search button
-                    let _search_btn = ui
+                    if ui
                         .add(Button::new("🔎").text_style(TextStyle::Body))
-                        .on_hover_text("Search");
+                        .on_hover_text("Search")
+                        .clicked()
+                    {
+                        Window::new("Search")
+                            .enabled(true)
+                            .collapsible(false)
+                            .show(ctx, |ui| {
+                                ui.label("Enter candidate name");
+                                let mut search_term = String::new();
+                                let text_input = ui.text_edit_singleline(&mut search_term);
+                                if text_input.lost_focus() && ui.input().key_pressed(Key::Enter) {
+                                    let found = candidates.into_iter().find(|candidate| {
+                                        candidate.name == search_term
+                                            || candidate
+                                                .installation_instruction
+                                                .ends_with(&search_term)
+                                    });
+                                    *selected_candidate = found.cloned();
+                                }
+                            });
+                    }
                 });
             });
             ui.add_space(10.);
@@ -245,7 +268,7 @@ impl Candidates {
                                     "Loading all versions for candidate '{}' failed",
                                     candidate.name
                                 );
-                                println!("{}:\n{}", msg, e)
+                                tracing::error!("{}:\n{}", msg, e)
                             }
                         }
                     }

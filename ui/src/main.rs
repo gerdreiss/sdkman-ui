@@ -2,8 +2,8 @@ use eframe::egui::CentralPanel;
 use eframe::egui::ScrollArea;
 use eframe::egui::Vec2;
 use eframe::epi::App;
-use eframe::NativeOptions;
 use eframe::run_native;
+use eframe::NativeOptions;
 
 use api::remote::fetch_remote_candidates;
 use candidates::Candidates;
@@ -36,6 +36,7 @@ impl App for Candidates {
 }
 
 fn main() {
+    tracing_subscriber::fmt::init();
     match fetch_remote_candidates() {
         Ok(candidates) => {
             let app = Candidates::new(&candidates);
@@ -44,7 +45,7 @@ fn main() {
             run_native(Box::new(app), win_option);
         }
         Err(e) => {
-            println!("Failed to start the application with:\n{}", e)
+            tracing::error!("Failed to start the application with:\n{}", e)
         }
     }
 }
