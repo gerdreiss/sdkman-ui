@@ -1,10 +1,12 @@
-use candidates::Candidates;
 use eframe::egui::CentralPanel;
 use eframe::egui::ScrollArea;
 use eframe::egui::Vec2;
 use eframe::epi::App;
-use eframe::run_native;
 use eframe::NativeOptions;
+use eframe::run_native;
+
+use api::remote::fetch_remote_candidates;
+use candidates::Candidates;
 
 mod candidates;
 
@@ -34,7 +36,7 @@ impl App for Candidates {
 }
 
 fn main() {
-    match api::fetch_candidates() {
+    match fetch_remote_candidates() {
         Ok(candidates) => {
             let app = Candidates::new(&candidates);
             let mut win_option = NativeOptions::default();

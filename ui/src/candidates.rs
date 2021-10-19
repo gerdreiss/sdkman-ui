@@ -1,6 +1,10 @@
+use std::borrow::Cow;
+
 use eframe::egui::*;
 use image::GenericImageView;
-use std::borrow::Cow;
+
+use api::model::*;
+use api::remote::*;
 
 const PADDING: f32 = 8.0;
 const WHITE: Color32 = Color32::from_rgb(255, 255, 255);
@@ -12,34 +16,29 @@ pub struct Logo {
     pub pixels: Vec<Color32>,
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Candidate {
     name: String,
     default_version: String,
     url: String,
     description: String,
     installation_instruction: String,
-    available_versions_text: String,
     versions: Vec<String>,
 }
 
 impl Candidate {
-    fn from_model(model: &api::CandidateModel) -> Candidate {
+    fn from_model(model: &CandidateModel) -> Candidate {
         Candidate {
             name: model.name().clone(),
             default_version: model.default_version().clone(),
             url: model.homepage().clone(),
             description: model.description().clone(),
             installation_instruction: format!("$ sdk install {}", model.binary_name()),
-            available_versions_text: model
-                .available_versions_text()
-                .unwrap_or(&String::new())
-                .clone(),
             versions: model.versions().iter().map(|v| v.to_string()).collect(),
         }
     }
-    fn to_model(&self) -> api::CandidateModel {
-        api::CandidateModel::new(
+    fn to_model(&self) -> CandidateModel {
+        CandidateModel::new(
             self.name.clone(),
             self.installation_instruction
                 .split_whitespace()
@@ -83,7 +82,7 @@ impl Default for Candidates {
 }
 
 impl Candidates {
-    pub fn new(models: &Vec<api::CandidateModel>) -> Candidates {
+    pub fn new(models: &Vec<CandidateModel>) -> Candidates {
         let mut app = Candidates::default();
         app.candidates = models
             .iter()
@@ -172,7 +171,7 @@ impl Candidates {
                         .on_hover_text("Refresh")
                         .clicked()
                     {
-                        match api::fetch_candidates() {
+                        match fetch_remote_candidates() {
                             Ok(models) => {
                                 let cands: Vec<Candidate> = models
                                     .iter()
@@ -236,7 +235,7 @@ impl Candidates {
                     });
                     // handle clicks on the name and default version
                     if added.clicked() {
-                        match api::fetch_candidate_versions(&mut candidate.to_model()) {
+                        match fetch_candidate_versions(&mut candidate.to_model()) {
                             Ok(candidate_with_versions) => {
                                 *selected_candidate =
                                     Some(Candidate::from_model(candidate_with_versions));
@@ -311,13 +310,12 @@ impl Candidates {
                 });
                 // render all available versions
                 ui.add_space(PADDING);
-                let available_versions = Label::new(
-                    selected_candidate
-                        .as_ref()
-                        .map(|c| c.versions.join("\n"))
-                        .unwrap_or_default(),
-                )
-                .text_style(eframe::egui::TextStyle::Body);
+                let available_versions_text = selected_candidate
+                    .as_ref()
+                    .map(|c| c.versions.join("\n"))
+                    .unwrap_or_default();
+                let available_versions =
+                    Label::new(available_versions_text).text_style(eframe::egui::TextStyle::Body);
                 ui.add(available_versions);
             }
             ui.add_space(3. * PADDING);
