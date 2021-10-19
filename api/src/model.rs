@@ -3,6 +3,8 @@ use std::str::FromStr;
 use lazy_static::lazy_static;
 use regex::Regex;
 
+use crate::util;
+
 type JavaVendor = String;
 type JavaUsage = String;
 type JavaVersion = String;
@@ -40,6 +42,7 @@ pub struct CandidateModel {
     versions: Vec<CandidateVersion>,
 }
 
+#[derive(Debug)]
 impl CandidateVersion {
     pub fn new(version: Version) -> Self {
         Self {
@@ -50,6 +53,7 @@ impl CandidateVersion {
     }
 }
 
+#[derive(Debug)]
 impl CandidateModel {
     pub fn new(
         name: String,
@@ -135,12 +139,12 @@ impl FromStr for Version {
         if input.contains(" | ") {
             let parts: Vec<&str> = input.split_terminator("|").map(|s| s.trim()).collect();
             Ok(Version::JavaVersion(
-                index_to_string(0, &parts),
-                index_to_string(1, &parts),
-                index_to_string(2, &parts),
-                index_to_string(3, &parts),
-                index_to_string(4, &parts),
-                index_to_string(5, &parts),
+                util::string_at(&parts, 0),
+                util::string_at(&parts, 1),
+                util::string_at(&parts, 2),
+                util::string_at(&parts, 3),
+                util::string_at(&parts, 4),
+                util::string_at(&parts, 5),
             ))
         } else {
             Ok(Version::OtherVersion(
@@ -148,13 +152,6 @@ impl FromStr for Version {
             ))
         }
     }
-}
-
-fn index_to_string(index: usize, parts: &Vec<&str>) -> String {
-    parts
-        .get(index)
-        .map(|p| String::from_str(p).unwrap_or_default())
-        .unwrap_or_default()
 }
 
 impl FromStr for CandidateModel {
