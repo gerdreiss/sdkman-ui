@@ -142,7 +142,6 @@ impl Candidates {
                         })
                         .clicked()
                     {
-                        println!("Are we gonna open it?");
                         let modifiers = ui.ctx().input().modifiers;
                         ui.ctx().output().open_url = Some(output::OpenUrl {
                             url: "https://sdkman.io/".to_owned(),

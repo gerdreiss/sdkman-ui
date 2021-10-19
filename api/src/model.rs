@@ -42,7 +42,6 @@ pub struct CandidateModel {
     versions: Vec<CandidateVersion>,
 }
 
-#[derive(Debug)]
 impl CandidateVersion {
     pub fn new(version: Version) -> Self {
         Self {
@@ -53,7 +52,6 @@ impl CandidateVersion {
     }
 }
 
-#[derive(Debug)]
 impl CandidateModel {
     pub fn new(
         name: String,
