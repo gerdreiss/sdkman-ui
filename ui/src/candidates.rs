@@ -330,6 +330,7 @@ impl Candidates {
             });
 
             ui.add_space(PADDING);
+            ui.add(Separator::default());
 
             if selected_candidate.is_some() {
                 ui.add_space(PADDING);
@@ -348,24 +349,24 @@ impl Candidates {
                     ui.with_layout(Layout::right_to_left(), |ui| {
                         ui.add_space(PADDING);
                         ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                            let _close_btn = ui
-                                .add(
-                                    Label::new("❌")
-                                        .wrap(true)
-                                        .text_style(eframe::egui::TextStyle::Body)
-                                        .sense(Sense::click()),
-                                )
+                            let close_btn_label = Label::new("❌")
+                                .wrap(true)
+                                .text_style(eframe::egui::TextStyle::Body)
+                                .sense(Sense::click());
+                            if ui
+                                .add(close_btn_label)
                                 .on_hover_ui(|ui| {
                                     show_tooltip_text(ui.ctx(), Id::new(&candidate.name), "Close");
-                                });
-                            if _close_btn.clicked() {
+                                })
+                                .clicked()
+                            {
                                 *selected_candidate = None;
                             }
                         });
                     });
                 });
                 // render all available versions
-                ui.add_space(PADDING);
+                ui.add_space(2. * PADDING);
                 let available_versions_text = selected_candidate
                     .as_ref()
                     .map(|c| c.versions.join("\n"))
@@ -373,8 +374,8 @@ impl Candidates {
                 let available_versions =
                     Label::new(available_versions_text).text_style(eframe::egui::TextStyle::Body);
                 ui.add(available_versions);
+                ui.add_space(3. * PADDING);
             }
-            ui.add_space(3. * PADDING);
         }
 
         ui.add_space(7. * PADDING);

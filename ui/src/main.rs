@@ -40,6 +40,7 @@ impl App for Candidates {
 fn main() {
     if cfg!(target_os = "windows") {
         println!("sdkman is not for windows!")
+        // for this show a dialog
     } else if env::var("SDKMAN_DIR").is_err() {
         println!("sdkman is not installed!")
     } else {
