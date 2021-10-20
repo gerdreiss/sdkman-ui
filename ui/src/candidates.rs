@@ -59,6 +59,8 @@ pub struct Candidates {
     logo: Logo,
     candidates: Vec<Candidate>,
     selected_candidate: Option<Candidate>,
+    candidate_search_dialog: bool,
+    candidate_search_term: String,
 }
 
 impl Default for Candidates {
@@ -77,6 +79,8 @@ impl Default for Candidates {
             logo: Logo { size, pixels },
             candidates: Vec::new(),
             selected_candidate: None,
+            candidate_search_dialog: false,
+            candidate_search_term: String::default(),
         }
     }
 }
@@ -124,6 +128,8 @@ impl Candidates {
             logo,
             candidates,
             selected_candidate,
+            candidate_search_dialog,
+            candidate_search_term: _,
         } = self;
         // define a TopBottomPanel widget
         TopBottomPanel::top("top_panel").show(ctx, |ui| {
@@ -194,23 +200,7 @@ impl Candidates {
                         .on_hover_text("Search")
                         .clicked()
                     {
-                        Window::new("Search")
-                            .enabled(true)
-                            .collapsible(false)
-                            .show(ctx, |ui| {
-                                ui.label("Enter candidate name");
-                                let mut search_term = String::new();
-                                let text_input = ui.text_edit_singleline(&mut search_term);
-                                if text_input.lost_focus() && ui.input().key_pressed(Key::Enter) {
-                                    let found = candidates.into_iter().find(|candidate| {
-                                        candidate.name == search_term
-                                            || candidate
-                                                .installation_instruction
-                                                .ends_with(&search_term)
-                                    });
-                                    *selected_candidate = found.cloned();
-                                }
-                            });
+                        *candidate_search_dialog = true;
                     }
                 });
             });
@@ -218,14 +208,58 @@ impl Candidates {
         });
     }
 
-    pub fn render_candidates(&mut self, ui: &mut Ui) {
+    pub fn render_candidates(&mut self, ctx: &CtxRef, ui: &mut Ui) {
         let Self {
             app_name: _,
             app_heading: _,
             logo: _,
             candidates,
             selected_candidate,
+            candidate_search_dialog,
+            candidate_search_term,
         } = self;
+
+        if *candidate_search_dialog {
+            Window::new("Search").show(ctx, |ui| {
+                ui.add_space(PADDING);
+                ui.horizontal(|ui| {
+                    ui.label("Candidate:");
+                    ui.with_layout(Layout::left_to_right(), |ui| {
+                        let text_input = ui.text_edit_singleline(candidate_search_term);
+                        if text_input.lost_focus() && ui.input().key_pressed(Key::Enter) {
+                            match candidates.into_iter().find(|candidate| {
+                                candidate.name == *candidate_search_term
+                                    || candidate
+                                        .installation_instruction
+                                        .ends_with(candidate_search_term.as_str())
+                            }) {
+                                None => {}
+                                Some(found) => {
+                                    match fetch_candidate_versions(&mut found.to_model()) {
+                                        Ok(candidate_with_versions) => {
+                                            *selected_candidate = Some(Candidate::from_model(
+                                                candidate_with_versions,
+                                            ));
+                                        }
+                                        Err(e) => {
+                                            *selected_candidate = None;
+                                            let msg = format!(
+                                                "Loading all versions for candidate '{}' failed",
+                                                candidate_search_term
+                                            );
+                                            tracing::error!("{}:\n{}", msg, e)
+                                        }
+                                    }
+                                    *candidate_search_dialog = false;
+                                    *candidate_search_term = String::default();
+                                }
+                            }
+                        }
+                    });
+                });
+                ui.add_space(PADDING);
+            });
+        }
 
         // render candidates
         for curr in candidates {

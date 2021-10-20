@@ -15,7 +15,7 @@ impl App for Candidates {
         self.render_top_panel(ctx, frame);
         CentralPanel::default().show(ctx, |ui| {
             ScrollArea::auto_sized().show(ui, |ui| {
-                self.render_candidates(ui);
+                self.render_candidates(ctx, ui);
             });
             self.render_footer(ctx);
         });
