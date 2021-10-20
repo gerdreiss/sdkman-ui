@@ -8,6 +8,8 @@ use eframe::NativeOptions;
 use api::remote::fetch_remote_candidates;
 use candidates::Candidates;
 
+use std::env;
+
 mod candidates;
 
 impl App for Candidates {
@@ -36,16 +38,22 @@ impl App for Candidates {
 }
 
 fn main() {
-    tracing_subscriber::fmt::init();
-    match fetch_remote_candidates() {
-        Ok(candidates) => {
-            let app = Candidates::new(&candidates);
-            let mut win_option = NativeOptions::default();
-            win_option.initial_window_size = Some(Vec2::new(1024., 960.));
-            run_native(Box::new(app), win_option);
-        }
-        Err(e) => {
-            tracing::error!("Failed to start the application with:\n{}", e)
+    if cfg!(target_os = "windows") {
+        println!("sdkman is not for windows!")
+    } else if env::var("SDKMAN_DIR").is_err() {
+        println!("sdkman is not installed!")
+    } else {
+        tracing_subscriber::fmt::init();
+        match fetch_remote_candidates() {
+            Ok(candidates) => {
+                let app = Candidates::new(&candidates);
+                let mut win_option = NativeOptions::default();
+                win_option.initial_window_size = Some(Vec2::new(1024., 960.));
+                run_native(Box::new(app), win_option);
+            }
+            Err(e) => {
+                tracing::error!("Failed to start the application with:\n{}", e)
+            }
         }
     }
 }

@@ -4,8 +4,6 @@ use url::Url;
 
 use crate::model::*;
 
-const BASE_URL: &str = "https://api.sdkman.io/2";
-
 #[derive(thiserror::Error, Debug)]
 pub enum SdkmanApiError {
     #[error("Failed to decode URL")]
@@ -35,8 +33,9 @@ impl ToString for Endpoint {
             Self::CandidateList => "/candidates/list".to_string(),
             Self::CandidateVersions(candidate) => {
                 format!(
-                    "/candidates/{}/darwinx64/versions/list?installed=",
-                    candidate
+                    "/candidates/{}/{}/versions/list?installed=",
+                    candidate,
+                    env!("SDKMAN_PLATFORM")
                 )
             }
         }
@@ -72,7 +71,8 @@ pub fn fetch_candidate_versions(
 }
 
 fn prepare_url(endpoint: Endpoint) -> Result<String, SdkmanApiError> {
-    let complete_url = format!("{}{}", BASE_URL, endpoint.to_string());
+    let base_url = env!("SDKMAN_CANDIDATES_API");
+    let complete_url = format!("{}{}", base_url, endpoint.to_string());
     let url = Url::parse(&complete_url)?;
     Ok(url.to_string())
 }
