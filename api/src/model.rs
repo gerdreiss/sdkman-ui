@@ -33,6 +33,12 @@ pub struct CandidateVersion {
 }
 
 #[derive(Debug)]
+pub struct LocalInstallation {
+    binary_name: String,
+    versions: Vec<CandidateVersion>,
+}
+
+#[derive(Debug)]
 pub struct CandidateModel {
     name: String,
     binary_name: String,
@@ -48,6 +54,22 @@ impl CandidateVersion {
             version,
             installed: false,
             current: false,
+        }
+    }
+    pub fn new_local(version: Version, installed: bool, current: bool) -> Self {
+        Self {
+            version,
+            installed,
+            current,
+        }
+    }
+}
+
+impl LocalInstallation {
+    pub fn new(binary_name: String, versions: Vec<CandidateVersion>) -> Self {
+        Self {
+            binary_name: binary_name,
+            versions: versions,
         }
     }
 }

@@ -5,6 +5,7 @@ use eframe::epi::App;
 use eframe::run_native;
 use eframe::NativeOptions;
 
+use api::local::retrieve_local_installations;
 use api::remote::fetch_remote_candidates;
 use candidates::Candidates;
 
@@ -45,6 +46,16 @@ fn main() {
         println!("sdkman is not installed!")
     } else {
         tracing_subscriber::fmt::init();
+
+        match retrieve_local_installations() {
+            Ok(installations) => {
+                dbg!(installations);
+            }
+            Err(e) => {
+                tracing::error!("Failed to start the application with:\n{}", e);
+            }
+        }
+
         match fetch_remote_candidates() {
             Ok(candidates) => {
                 let app = Candidates::new(&candidates);
