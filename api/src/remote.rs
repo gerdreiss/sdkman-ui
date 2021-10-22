@@ -1,4 +1,5 @@
 use reqwest::StatusCode;
+use std::env;
 use std::str::FromStr;
 use url::Url;
 
@@ -6,6 +7,8 @@ use crate::model::*;
 
 #[derive(thiserror::Error, Debug)]
 pub enum SdkmanApiError {
+    #[error("Failed to retrieve environment variable")]
+    FailedToRetrieveEnvVar(#[from] env::VarError),
     #[error("Failed to decode URL")]
     FailedToDecodeUrl(#[from] std::string::FromUtf8Error),
     #[error("Failed converting response to string")]
@@ -35,7 +38,7 @@ impl ToString for Endpoint {
                 format!(
                     "/candidates/{}/{}/versions/list?installed=",
                     candidate,
-                    env!("SDKMAN_PLATFORM")
+                    env::var("SDKMAN_PLATFORM").unwrap()
                 )
             }
         }
@@ -71,7 +74,7 @@ pub fn fetch_candidate_versions(
 }
 
 fn prepare_url(endpoint: Endpoint) -> Result<String, SdkmanApiError> {
-    let base_url = env!("SDKMAN_CANDIDATES_API");
+    let base_url = env::var("SDKMAN_CANDIDATES_API")?;
     let complete_url = format!("{}{}", base_url, endpoint.to_string());
     let url = Url::parse(&complete_url)?;
     Ok(url.to_string())
