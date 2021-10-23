@@ -45,7 +45,7 @@ impl ToString for Endpoint {
     }
 }
 
-pub fn fetch_remote_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> {
+pub fn fetch_remote_candidates() -> Result<Vec<RemoteCandidate>, SdkmanApiError> {
     let url = prepare_url(Endpoint::CandidateList)?;
     let res = reqwest::blocking::get(url)?;
     let status: StatusCode = res.status();
@@ -59,8 +59,8 @@ pub fn fetch_remote_candidates() -> Result<Vec<CandidateModel>, SdkmanApiError> 
 }
 
 pub fn fetch_candidate_versions(
-    candidate: &mut CandidateModel,
-) -> Result<&CandidateModel, SdkmanApiError> {
+    candidate: &mut RemoteCandidate,
+) -> Result<&RemoteCandidate, SdkmanApiError> {
     let url = prepare_url(Endpoint::CandidateVersions(candidate.binary_name().clone()))?;
     let res = reqwest::blocking::get(url)?;
     let status: StatusCode = res.status();
@@ -80,7 +80,7 @@ fn prepare_url(endpoint: Endpoint) -> Result<String, SdkmanApiError> {
     Ok(url.to_string())
 }
 
-fn parse_candidates(input: String) -> Vec<CandidateModel> {
+fn parse_candidates(input: String) -> Vec<RemoteCandidate> {
     let idx = input.find("-------------------------------").unwrap_or(0);
     let candidates: String = input.chars().skip(idx).collect();
     let pattern: String = candidates.chars().take_while(|c| *c == '-').collect();
@@ -90,7 +90,7 @@ fn parse_candidates(input: String) -> Vec<CandidateModel> {
         .collect::<String>()
         .split_terminator(&pattern)
         .filter(|x| !x.trim().is_empty())
-        .map(|desc| CandidateModel::from_str(desc).unwrap())
+        .map(|desc| RemoteCandidate::from_str(desc).unwrap())
         .collect()
 }
 

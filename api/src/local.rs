@@ -4,11 +4,11 @@ use std::fs;
 use std::io::Error;
 use std::io::ErrorKind;
 
-pub fn retrieve_local_installations() -> std::io::Result<Vec<LocalInstallation>> {
+pub fn retrieve_local_candidates() -> std::io::Result<Vec<LocalCandidate>> {
     match env::var("SDKMAN_CANDIDATES_DIR") {
         Err(e) => Err(Error::new(ErrorKind::NotFound, e)),
         Ok(candidates_dir) => {
-            let mut local_versions: Vec<LocalInstallation> = Vec::new();
+            let mut local_versions: Vec<LocalCandidate> = Vec::new();
             for candidate_entry in fs::read_dir(candidates_dir)? {
                 let candidate_path = candidate_entry?.path();
                 if candidate_path.is_file() {
@@ -43,7 +43,7 @@ pub fn retrieve_local_installations() -> std::io::Result<Vec<LocalInstallation>>
                         ));
                     }
                 }
-                local_versions.push(LocalInstallation::new(
+                local_versions.push(LocalCandidate::new(
                     binary_name.to_string(),
                     candidate_versions,
                 ));

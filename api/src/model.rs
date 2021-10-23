@@ -32,14 +32,14 @@ pub struct CandidateVersion {
     current: bool,
 }
 
-#[derive(Debug)]
-pub struct LocalInstallation {
+#[derive(Debug, Clone)]
+pub struct LocalCandidate {
     binary_name: String,
     versions: Vec<CandidateVersion>,
 }
 
-#[derive(Debug)]
-pub struct CandidateModel {
+#[derive(Debug, Clone)]
+pub struct RemoteCandidate {
     name: String,
     binary_name: String,
     description: String,
@@ -65,16 +65,22 @@ impl CandidateVersion {
     }
 }
 
-impl LocalInstallation {
+impl LocalCandidate {
     pub fn new(binary_name: String, versions: Vec<CandidateVersion>) -> Self {
         Self {
             binary_name: binary_name,
             versions: versions,
         }
     }
+    pub fn binary_name(&self) -> &String {
+        &self.binary_name
+    }
+    pub fn versions(&self) -> Vec<String> {
+        self.versions.iter().map(|v| v.to_string()).collect()
+    }
 }
 
-impl CandidateModel {
+impl RemoteCandidate {
     pub fn new(
         name: String,
         binary_name: String,
@@ -174,7 +180,7 @@ impl FromStr for Version {
     }
 }
 
-impl FromStr for CandidateModel {
+impl FromStr for RemoteCandidate {
     type Err = std::io::Error;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
@@ -220,7 +226,7 @@ impl FromStr for CandidateModel {
             }
         }
 
-        Ok(CandidateModel::new(
+        Ok(RemoteCandidate::new(
             name,
             binary_name,
             description,

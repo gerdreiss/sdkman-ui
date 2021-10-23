@@ -27,18 +27,26 @@ pub struct Candidate {
 }
 
 impl Candidate {
-    fn from_model(model: &CandidateModel) -> Candidate {
+    fn from_model(
+        remote_candidate: &RemoteCandidate,
+        local_candidate: Option<&LocalCandidate>,
+    ) -> Candidate {
         Candidate {
-            name: model.name().clone(),
-            default_version: model.default_version().clone(),
-            url: model.homepage().clone(),
-            description: model.description().clone(),
-            installation_instruction: format!("$ sdk install {}", model.binary_name()),
-            versions: model.versions().iter().map(|v| v.to_string()).collect(),
+            name: remote_candidate.name().clone(),
+            default_version: remote_candidate.default_version().clone(),
+            url: remote_candidate.homepage().clone(),
+            description: remote_candidate.description().clone(),
+            installation_instruction: format!("$ sdk install {}", remote_candidate.binary_name()),
+            versions: local_candidate
+                .map(|c| c.versions())
+                .unwrap_or(remote_candidate.versions())
+                .iter()
+                .map(|v| v.to_string())
+                .collect(),
         }
     }
-    fn to_model(&self) -> CandidateModel {
-        CandidateModel::new(
+    fn to_model(&self) -> RemoteCandidate {
+        RemoteCandidate::new(
             self.name.clone(),
             self.installation_instruction
                 .split_whitespace()
@@ -86,11 +94,21 @@ impl Default for Candidates {
 }
 
 impl Candidates {
-    pub fn new(models: &Vec<CandidateModel>) -> Candidates {
+    pub fn new(
+        remote_candidates: &Vec<RemoteCandidate>,
+        local_candidates: &Vec<LocalCandidate>,
+    ) -> Candidates {
         let mut app = Candidates::default();
-        app.candidates = models
+        app.candidates = remote_candidates
             .iter()
-            .map(|model| Candidate::from_model(model))
+            .map(|remote_candidate| {
+                Candidate::from_model(
+                    remote_candidate,
+                    local_candidates.iter().find(|local_candidate| {
+                        remote_candidate.binary_name() == local_candidate.binary_name()
+                    }),
+                )
+            })
             .collect();
         app
     }
@@ -180,7 +198,7 @@ impl Candidates {
                             Ok(models) => {
                                 let cands: Vec<Candidate> = models
                                     .iter()
-                                    .map(|model| Candidate::from_model(model))
+                                    .map(|model| Candidate::from_model(model, None))
                                     .collect();
                                 *candidates = cands;
                                 *selected_candidate = None;
@@ -239,6 +257,7 @@ impl Candidates {
                                         Ok(candidate_with_versions) => {
                                             *selected_candidate = Some(Candidate::from_model(
                                                 candidate_with_versions,
+                                                None,
                                             ));
                                         }
                                         Err(e) => {
@@ -294,7 +313,7 @@ impl Candidates {
                         match fetch_candidate_versions(&mut candidate.to_model()) {
                             Ok(candidate_with_versions) => {
                                 *selected_candidate =
-                                    Some(Candidate::from_model(candidate_with_versions));
+                                    Some(Candidate::from_model(candidate_with_versions, None));
                             }
                             Err(e) => {
                                 *selected_candidate = None;
