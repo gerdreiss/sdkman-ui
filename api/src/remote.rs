@@ -59,14 +59,14 @@ pub fn fetch_remote_candidates() -> Result<Vec<RemoteCandidate>, SdkmanApiError>
 }
 
 pub fn fetch_candidate_versions(
-    candidate: &mut RemoteCandidate,
+    remote_candidate: &mut RemoteCandidate
 ) -> Result<&RemoteCandidate, SdkmanApiError> {
-    let url = prepare_url(Endpoint::CandidateVersions(candidate.binary_name().clone()))?;
+    let url = prepare_url(Endpoint::CandidateVersions(remote_candidate.binary_name().clone()))?;
     let res = reqwest::blocking::get(url)?;
     let status: StatusCode = res.status();
     return if status.is_success() {
         res.text()
-            .map(move |text| &*candidate.with_versions(&parse_available_versions(&text)))
+            .map(move |text| &*remote_candidate.with_versions(&parse_available_versions(&text)))
             .map_err(|err| SdkmanApiError::RequestFailed(err))
     } else {
         Err(SdkmanApiError::ServerError(status.as_u16()))

@@ -1,8 +1,10 @@
-use crate::model::*;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::Error;
 use std::io::ErrorKind;
+
+use crate::model::*;
 
 pub fn retrieve_local_candidates() -> std::io::Result<Vec<LocalCandidate>> {
     match env::var("SDKMAN_CANDIDATES_DIR") {
@@ -21,27 +23,35 @@ pub fn retrieve_local_candidates() -> std::io::Result<Vec<LocalCandidate>> {
                         .to_string_lossy(),
                 );
 
-                let mut candidate_versions: Vec<CandidateVersion> = Vec::new();
+                let mut installed_current_map: HashMap<String, bool> = HashMap::new();
 
                 for version_dir in fs::read_dir(candidate_path)? {
                     let version_path = version_dir?.path();
                     if version_path.is_file() {
                         continue;
                     }
-                    let version_dir_name = String::from(
-                        version_path
-                            .file_name()
-                            .unwrap_or_default()
-                            .to_string_lossy(),
-                    );
-                    if version_dir_name != "current" {
-                        let other_version = Version::OtherVersion(version_dir_name);
-                        candidate_versions.push(CandidateVersion::new_local(other_version, false));
+                    let version_id = version_path
+                        .canonicalize()?
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string();
+
+                    if installed_current_map.contains_key(&version_id) {
+                        installed_current_map.insert(version_id, true);
+                    } else {
+                        installed_current_map.insert(version_id, false);
                     }
                 }
+
                 local_versions.push(LocalCandidate::new(
                     binary_name.to_string(),
-                    candidate_versions,
+                    installed_current_map
+                        .iter()
+                        .map(|(k, v)| {
+                            CandidateVersion::new_local(Version::OtherVersion(k.to_string()), *v)
+                        })
+                        .collect(),
                 ));
             }
 
