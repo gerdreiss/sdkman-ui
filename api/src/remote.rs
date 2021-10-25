@@ -1,9 +1,175 @@
-use reqwest::StatusCode;
 use std::env;
 use std::str::FromStr;
+
+use lazy_static::lazy_static;
+use regex::Regex;
+use reqwest::StatusCode;
 use url::Url;
 
-use crate::model::*;
+use crate::util;
+
+type JavaVendor = String;
+type JavaUsage = String;
+type JavaVersion = String;
+type JavaDist = String;
+type JavaStatus = String;
+type JavaId = String;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RemoteVersion {
+    JavaVersion(
+        JavaVendor,
+        JavaUsage,
+        JavaVersion,
+        JavaDist,
+        JavaStatus,
+        JavaId,
+    ),
+    OtherVersion(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct RemoteCandidate {
+    name: String,
+    binary_name: String,
+    description: String,
+    homepage: String,
+    default_version: String,
+    versions: Vec<RemoteVersion>,
+}
+
+impl RemoteCandidate {
+    pub fn new(
+        name: String,
+        binary_name: String,
+        description: String,
+        homepage: String,
+        default_version: String,
+    ) -> Self {
+        Self {
+            name,
+            binary_name,
+            description,
+            homepage,
+            default_version,
+            versions: Vec::new(),
+        }
+    }
+    pub fn name(&self) -> &String {
+        &self.name
+    }
+    pub fn binary_name(&self) -> &String {
+        &self.binary_name
+    }
+    pub fn description(&self) -> &String {
+        &self.description
+    }
+    pub fn homepage(&self) -> &String {
+        &self.homepage
+    }
+    pub fn default_version(&self) -> &String {
+        &self.default_version
+    }
+    pub fn versions(&self) -> &Vec<RemoteVersion> {
+        &self.versions
+    }
+    pub fn with_versions(&mut self, versions: &Vec<RemoteVersion>) -> &mut Self {
+        self.versions = versions.to_vec();
+        self
+    }
+}
+
+impl ToString for RemoteVersion {
+    fn to_string(&self) -> String {
+        match self {
+            RemoteVersion::JavaVersion(vendor, usage, version, distribution, status, id) => {
+                format!(
+                    " {: <12} {: >5} {: <15} {: <10} {: <12} {: <20}",
+                    vendor, usage, version, distribution, status, id
+                )
+            }
+            RemoteVersion::OtherVersion(value) => format!("{: >16}", value),
+        }
+    }
+}
+
+impl FromStr for RemoteVersion {
+    type Err = std::io::Error;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        if input.contains(" | ") {
+            let parts: Vec<&str> = input.split_terminator("|").map(|s| s.trim()).collect();
+            Ok(RemoteVersion::JavaVersion(
+                util::string_at(&parts, 0),
+                util::string_at(&parts, 1),
+                util::string_at(&parts, 2),
+                util::string_at(&parts, 3),
+                util::string_at(&parts, 4),
+                util::string_at(&parts, 5),
+            ))
+        } else {
+            Ok(RemoteVersion::OtherVersion(
+                String::from_str(input.trim()).unwrap_or_default(),
+            ))
+        }
+    }
+}
+
+impl FromStr for RemoteCandidate {
+    type Err = std::io::Error;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        lazy_static! {
+            static ref VERSION_REGEX: Regex = Regex::new(r"\([-\w+\d+\.! ]+\)").unwrap();
+            static ref URI_REGEX: Regex = Regex::new(
+                r"(http|https)://(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(/|/([\w#!:.?+=&%@!-/]))?"
+            )
+            .unwrap();
+        }
+
+        let mut name = String::new();
+        let mut binary_name = String::new();
+        let mut description = String::new();
+        let mut homepage = String::new();
+        let mut default_version = String::new();
+
+        let mut lines = input.lines();
+        while let Some(line) = lines.next() {
+            if line.is_empty() {
+                continue;
+            } else if URI_REGEX.is_match(line) {
+                let uri = URI_REGEX
+                    .find(line)
+                    .map(|m| m.as_str())
+                    .unwrap_or("failed to extract the homepage");
+                homepage.push_str(uri);
+
+                let version = VERSION_REGEX
+                    .find_iter(line)
+                    .last()
+                    .map(|m| m.as_str())
+                    .unwrap_or("(unknown)");
+                default_version.push_str(version);
+
+                let idx = line.find(version).unwrap_or(line.len());
+                name = line.chars().take(idx - 1).collect();
+            } else if line.contains("$ sdk install") {
+                binary_name.push_str(line.split_whitespace().last().unwrap());
+            } else {
+                description.push_str(line);
+                description.push_str(" ");
+            }
+        }
+
+        Ok(RemoteCandidate::new(
+            name,
+            binary_name,
+            description,
+            homepage,
+            default_version,
+        ))
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum SdkmanApiError {
@@ -59,9 +225,11 @@ pub fn fetch_remote_candidates() -> Result<Vec<RemoteCandidate>, SdkmanApiError>
 }
 
 pub fn fetch_candidate_versions(
-    remote_candidate: &mut RemoteCandidate
+    remote_candidate: &mut RemoteCandidate,
 ) -> Result<&RemoteCandidate, SdkmanApiError> {
-    let url = prepare_url(Endpoint::CandidateVersions(remote_candidate.binary_name().clone()))?;
+    let url = prepare_url(Endpoint::CandidateVersions(
+        remote_candidate.binary_name().clone(),
+    ))?;
     let res = reqwest::blocking::get(url)?;
     let status: StatusCode = res.status();
     return if status.is_success() {
@@ -94,7 +262,7 @@ fn parse_candidates(input: String) -> Vec<RemoteCandidate> {
         .collect()
 }
 
-fn parse_available_versions(input: &String) -> Vec<CandidateVersion> {
+fn parse_available_versions(input: &String) -> Vec<RemoteVersion> {
     if input.contains("Available Java Versions") {
         parse_available_java_versions(input)
     } else {
@@ -107,18 +275,16 @@ fn parse_available_versions(input: &String) -> Vec<CandidateVersion> {
         let mut strs: Vec<&str> = versions.split_whitespace().collect();
         strs.sort_by(|s1, s2| alphanumeric_sort::compare_str(s2, s1));
         strs.iter()
-            .map(|v| Version::from_str(v).unwrap())
-            .map(|v| CandidateVersion::new_remote(v))
+            .map(|v| RemoteVersion::from_str(v).unwrap())
             .collect()
     }
 }
 
-fn parse_available_java_versions(input: &String) -> Vec<CandidateVersion> {
+fn parse_available_java_versions(input: &String) -> Vec<RemoteVersion> {
     input
         .lines()
         .skip(5)
         .take_while(|line| !line.starts_with("==="))
-        .map(|line| Version::from_str(line).unwrap())
-        .map(|version| CandidateVersion::new_remote(version))
+        .map(|line| RemoteVersion::from_str(line).unwrap())
         .collect()
 }

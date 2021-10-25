@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use eframe::egui::*;
 use image::GenericImageView;
 
-use api::model::*;
+use api::local::*;
 use api::remote::*;
 
 const PADDING: f32 = 8.0;
@@ -27,19 +27,15 @@ pub struct Candidate {
 }
 
 impl Candidate {
-    fn from_model(
-        remote_candidate: &RemoteCandidate,
-        local_candidate: Option<&LocalCandidate>,
-    ) -> Candidate {
+    fn from_model(remote_candidate: &RemoteCandidate) -> Candidate {
         Candidate {
             name: remote_candidate.name().clone(),
             default_version: remote_candidate.default_version().clone(),
             url: remote_candidate.homepage().clone(),
             description: remote_candidate.description().clone(),
             installation_instruction: format!("$ sdk install {}", remote_candidate.binary_name()),
-            versions: local_candidate
-                .map(|c| c.versions())
-                .unwrap_or(remote_candidate.versions())
+            versions: remote_candidate
+                .versions()
                 .iter()
                 .map(|v| v.to_string())
                 .collect(),
@@ -103,14 +99,7 @@ impl SdkmanApp {
         let mut app = SdkmanApp::default();
         app.candidates = remote_candidates
             .iter()
-            .map(|remote_candidate| {
-                Candidate::from_model(
-                    remote_candidate,
-                    local_candidates.iter().find(|local_candidate| {
-                        *remote_candidate.binary_name() == *local_candidate.binary_name()
-                    }),
-                )
-            })
+            .map(|remote_candidate| Candidate::from_model(remote_candidate))
             .collect();
         app
     }
@@ -279,7 +268,7 @@ impl SdkmanApp {
                         match fetch_candidate_versions(&mut candidate.to_model()) {
                             Ok(candidate_with_versions) => {
                                 *selected_candidate =
-                                    Some(Candidate::from_model(candidate_with_versions, None));
+                                    Some(Candidate::from_model(candidate_with_versions));
                             }
                             Err(e) => {
                                 *selected_candidate = None;
@@ -435,10 +424,7 @@ impl SdkmanApp {
                             Some(found) => {
                                 match fetch_candidate_versions(&mut found.to_model()) {
                                     Ok(candidate_with_versions) => {
-                                        *selected_candidate = Some(Candidate::from_model(
-                                            candidate_with_versions,
-                                            None,
-                                        ));
+                                        *selected_candidate = Some(Candidate::from_model(candidate_with_versions));
                                     }
                                     Err(e) => {
                                         *selected_candidate = None;
