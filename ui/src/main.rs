@@ -46,25 +46,24 @@ fn main() {
     } else if env::var("SDKMAN_DIR").is_err() {
         println!("sdkman is not installed!")
     } else {
-        tracing_subscriber::fmt::init();
 
         let remote_candidates_handle = thread::spawn(|| match fetch_remote_candidates() {
             Ok(candidates) => {
-                tracing::info!("Fetched {} candidates from server", candidates.len());
+                println!("Fetched {} candidates from server", candidates.len());
                 candidates
             }
             Err(e) => {
-                tracing::error!("Failed to retrieve remote candidates: {}", e);
+                println!("Failed to retrieve remote candidates: {}", e);
                 Vec::new()
             }
         });
         let local_candidates_handle = thread::spawn(|| match retrieve_local_candidates() {
             Ok(candidates) => {
-                tracing::info!("Found {} locally installed candidates.", candidates.len());
+                println!("Found {} locally installed candidates.", candidates.len());
                 candidates
             }
             Err(e) => {
-                tracing::error!("Failed to retrieve local candidates: {}", e);
+                println!("Failed to retrieve local candidates: {}", e);
                 Vec::new()
             }
         });
@@ -80,10 +79,10 @@ fn main() {
                 run_native(Box::new(app), win_option);
             }
             (Err(_), _) => {
-                tracing::error!("Remote candidates retrieval thread failed.");
+                println!("Remote candidates retrieval thread failed.");
             }
             (_, Err(_)) => {
-                tracing::error!("Local candidates retrieval thread failed.");
+                println!("Local candidates retrieval thread failed.");
             }
         }
     }

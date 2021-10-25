@@ -260,11 +260,10 @@ impl SdkmanApp {
                             }
                             Err(e) => {
                                 *selected_candidate = None;
-                                let msg = format!(
-                                    "Loading all versions for candidate '{}' failed",
-                                    candidate.name
-                                );
-                                tracing::error!("{}:\n{}", msg, e)
+                                println!(
+                                    "Loading all versions for candidate '{}' failed with {}",
+                                    candidate.name, e
+                                )
                             }
                         }
                     }
@@ -419,11 +418,10 @@ impl SdkmanApp {
                                     }
                                     Err(e) => {
                                         *selected_candidate = None;
-                                        let msg = format!(
-                                            "Loading all versions for candidate '{}' failed",
-                                            candidate_search_term
+                                        println!(
+                                            "Loading all versions for candidate '{}' failed with {}",
+                                            candidate_search_term, e
                                         );
-                                        tracing::error!("{}:\n{}", msg, e)
                                     }
                                 }
                                 *candidate_search_dialog = false;
