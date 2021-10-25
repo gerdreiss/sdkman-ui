@@ -52,8 +52,6 @@ pub fn retrieve_local_candidates() -> std::io::Result<Vec<LocalCandidate>> {
                 ));
             }
 
-            dbg!(&local_versions);
-
             Ok(local_versions)
         }
     }
