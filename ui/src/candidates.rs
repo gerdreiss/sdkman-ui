@@ -107,7 +107,7 @@ impl SdkmanApp {
                 Candidate::from_model(
                     remote_candidate,
                     local_candidates.iter().find(|local_candidate| {
-                        remote_candidate.binary_name() == local_candidate.binary_name()
+                        *remote_candidate.binary_name() == *local_candidate.binary_name()
                     }),
                 )
             })
@@ -242,7 +242,7 @@ impl SdkmanApp {
                 selected_candidate,
                 candidate_search_dialog,
                 candidate_search_term,
-                error_message
+                error_message,
             );
         }
 

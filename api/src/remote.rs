@@ -108,7 +108,7 @@ fn parse_available_versions(input: &String) -> Vec<CandidateVersion> {
         strs.sort_by(|s1, s2| alphanumeric_sort::compare_str(s2, s1));
         strs.iter()
             .map(|v| Version::from_str(v).unwrap())
-            .map(|v| CandidateVersion::new(v))
+            .map(|v| CandidateVersion::new_remote(v))
             .collect()
     }
 }
@@ -119,6 +119,6 @@ fn parse_available_java_versions(input: &String) -> Vec<CandidateVersion> {
         .skip(5)
         .take_while(|line| !line.starts_with("==="))
         .map(|line| Version::from_str(line).unwrap())
-        .map(|version| CandidateVersion::new(version))
+        .map(|version| CandidateVersion::new_remote(version))
         .collect()
 }

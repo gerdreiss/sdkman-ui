@@ -36,11 +36,7 @@ pub fn retrieve_local_candidates() -> std::io::Result<Vec<LocalCandidate>> {
                     );
                     if version_dir_name != "current" {
                         let other_version = Version::OtherVersion(version_dir_name);
-                        candidate_versions.push(CandidateVersion::new_local(
-                            other_version,
-                            true,
-                            false,
-                        ));
+                        candidate_versions.push(CandidateVersion::new_local(other_version, false));
                     }
                 }
                 local_versions.push(LocalCandidate::new(

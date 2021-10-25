@@ -49,17 +49,17 @@ pub struct RemoteCandidate {
 }
 
 impl CandidateVersion {
-    pub fn new(version: Version) -> Self {
+    pub fn new_remote(version: Version) -> Self {
         Self {
             version,
             installed: false,
             current: false,
         }
     }
-    pub fn new_local(version: Version, installed: bool, current: bool) -> Self {
+    pub fn new_local(version: Version, current: bool) -> Self {
         Self {
             version,
-            installed,
+            installed: true,
             current,
         }
     }
@@ -68,8 +68,8 @@ impl CandidateVersion {
 impl LocalCandidate {
     pub fn new(binary_name: String, versions: Vec<CandidateVersion>) -> Self {
         Self {
-            binary_name: binary_name,
-            versions: versions,
+            binary_name,
+            versions,
         }
     }
     pub fn binary_name(&self) -> &String {
@@ -150,8 +150,8 @@ impl ToString for CandidateVersion {
             }
             Version::OtherVersion(value) => format!(
                 " {} {} {} ",
-                if self.current { ">" } else { "" },
-                if self.installed { "*" } else { "" },
+                if self.current { ">" } else { " " },
+                if self.installed { "*" } else { " " },
                 value
             ),
         }
