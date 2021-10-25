@@ -89,36 +89,37 @@ impl RemoteVersion {
     }
     pub fn mk_string(&self, local_versions: &HashMap<String, bool>) -> String {
         match self {
-            RemoteVersion::JavaVersion(vendor, _, version, distribution, _, id) => {
-                let status = if local_versions.contains_key(id) {
-                    "installed"
-                } else {
-                    ""
-                };
-                let usage = if *local_versions.get(id).unwrap_or(&false) {
-                    "current"
-                } else {
-                    ""
-                };
+            RemoteVersion::JavaVersion(vendor, _, version, _, _, id) => {
+                let (status, usage) = self.get_status_and_usage(local_versions, id);
                 format!(
-                    " {: <12} {: >10} {: <15} {: <10} {: <12} {: <20}",
-                    vendor, usage, version, distribution, status, id
+                    " {: <13} {: <20} {: <12} {: <10}",
+                    vendor, version, status, usage
                 )
             }
             RemoteVersion::OtherVersion(value) => {
-                let status = if local_versions.contains_key(value) {
-                    "installed"
-                } else {
-                    ""
-                };
-                let usage = if *local_versions.get(value).unwrap_or(&false) {
-                    "current"
-                } else {
-                    ""
-                };
-                format!(" {: <20} {: >12}  {: <10}", value, status, usage)
+                let (status, usage) = self.get_status_and_usage(local_versions, value);
+                format!(" {: <20} {: >12} {: <10}", value, status, usage)
             }
         }
+    }
+
+    fn get_status_and_usage(
+        &self,
+        local_versions: &HashMap<String, bool>,
+        version: &String,
+    ) -> (&str, &str) {
+        (
+            if local_versions.contains_key(version) {
+                "installed"
+            } else {
+                ""
+            },
+            if *local_versions.get(version).unwrap_or(&false) {
+                "current"
+            } else {
+                ""
+            },
+        )
     }
 }
 
