@@ -144,8 +144,8 @@ impl SdkmanApp {
             app_name: _,
             app_heading,
             logo,
-            candidates,
-            selected_candidate,
+            candidates: _,
+            selected_candidate: _,
             candidate_search_dialog,
             candidate_search_term: _,
         } = self;
@@ -187,30 +187,6 @@ impl SdkmanApp {
                         .clicked()
                     {
                         frame.quit();
-                    }
-                    // Refresh button
-                    if ui
-                        .add(Button::new("🔄").text_style(TextStyle::Body))
-                        .on_hover_text("Refresh")
-                        .clicked()
-                    {
-                        match fetch_remote_candidates() {
-                            Ok(models) => {
-                                let cands: Vec<Candidate> = models
-                                    .iter()
-                                    .map(|model| Candidate::from_model(model, None))
-                                    .collect();
-                                *candidates = cands;
-                                *selected_candidate = None;
-                            }
-                            Err(e) => {
-                                *selected_candidate = None;
-                                tracing::error!(
-                                    "Refreshing the list of candidates failed with:\n{}",
-                                    e
-                                )
-                            }
-                        }
                     }
                     // Search button
                     if ui
