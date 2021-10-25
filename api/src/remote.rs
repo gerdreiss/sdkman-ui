@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::str::FromStr;
 
@@ -79,16 +80,44 @@ impl RemoteCandidate {
     }
 }
 
-impl ToString for RemoteVersion {
-    fn to_string(&self) -> String {
+impl RemoteVersion {
+    pub fn id(&self) -> &String {
         match self {
-            RemoteVersion::JavaVersion(vendor, usage, version, distribution, status, id) => {
+            RemoteVersion::JavaVersion(_, _, _, _, _, id) => id,
+            RemoteVersion::OtherVersion(value) => value,
+        }
+    }
+    pub fn mk_string(&self, local_versions: &HashMap<String, bool>) -> String {
+        match self {
+            RemoteVersion::JavaVersion(vendor, _, version, distribution, _, id) => {
+                let status = if local_versions.contains_key(id) {
+                    "installed"
+                } else {
+                    ""
+                };
+                let usage = if *local_versions.get(id).unwrap_or(&false) {
+                    "current"
+                } else {
+                    ""
+                };
                 format!(
-                    " {: <12} {: >5} {: <15} {: <10} {: <12} {: <20}",
+                    " {: <12} {: >10} {: <15} {: <10} {: <12} {: <20}",
                     vendor, usage, version, distribution, status, id
                 )
             }
-            RemoteVersion::OtherVersion(value) => format!("{: >16}", value),
+            RemoteVersion::OtherVersion(value) => {
+                let status = if local_versions.contains_key(value) {
+                    "installed"
+                } else {
+                    ""
+                };
+                let usage = if *local_versions.get(value).unwrap_or(&false) {
+                    "current"
+                } else {
+                    ""
+                };
+                format!(" {: <20} {: >12}  {: <10}", value, status, usage)
+            }
         }
     }
 }

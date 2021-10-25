@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 use eframe::egui::*;
 use image::GenericImageView;
@@ -23,7 +24,7 @@ pub struct Candidate {
     url: String,
     description: String,
     installation_instruction: String,
-    versions: Vec<String>,
+    versions: Vec<RemoteVersion>,
 }
 
 impl Candidate {
@@ -34,11 +35,7 @@ impl Candidate {
             url: remote_candidate.homepage().clone(),
             description: remote_candidate.description().clone(),
             installation_instruction: format!("$ sdk install {}", remote_candidate.binary_name()),
-            versions: remote_candidate
-                .versions()
-                .iter()
-                .map(|v| v.to_string())
-                .collect(),
+            versions: remote_candidate.versions().to_vec(),
         }
     }
     fn to_model(&self) -> RemoteCandidate {
@@ -56,12 +53,12 @@ impl Candidate {
     }
 }
 
-#[derive(PartialEq)]
 pub struct SdkmanApp {
     app_name: &'static str,
     app_heading: &'static str,
     logo: Logo,
     candidates: Vec<Candidate>,
+    local_candidates: Vec<LocalCandidate>,
     selected_candidate: Option<Candidate>,
     candidate_search_dialog: bool,
     candidate_search_term: String,
@@ -83,6 +80,7 @@ impl Default for SdkmanApp {
             app_heading: "sdkman candidates",
             logo: Logo { size, pixels },
             candidates: Vec::new(),
+            local_candidates: Vec::new(),
             selected_candidate: None,
             candidate_search_dialog: false,
             candidate_search_term: String::default(),
@@ -101,6 +99,7 @@ impl SdkmanApp {
             .iter()
             .map(|remote_candidate| Candidate::from_model(remote_candidate))
             .collect();
+        app.local_candidates = local_candidates.to_vec();
         app
     }
 
@@ -136,6 +135,7 @@ impl SdkmanApp {
             app_heading,
             logo,
             candidates: _,
+            local_candidates: _,
             selected_candidate: _,
             candidate_search_dialog,
             candidate_search_term: _,
@@ -208,11 +208,13 @@ impl SdkmanApp {
             app_heading: _,
             logo: _,
             candidates,
+            local_candidates,
             selected_candidate,
             candidate_search_dialog,
             candidate_search_term,
             error_message,
         } = self;
+
         if ui.input().key_pressed(Key::Escape) {
             *selected_candidate = None;
             *candidate_search_dialog = false;
@@ -306,14 +308,33 @@ impl SdkmanApp {
             ui.add(Separator::default());
 
             if selected_candidate.is_some() {
-                SdkmanApp::render_selected_candidate(ui, selected_candidate);
+                SdkmanApp::render_selected_candidate(
+                    ui,
+                    selected_candidate,
+                    local_candidates.iter().find(|local_candidate| {
+                        if let Some(remote_candidate) = &selected_candidate {
+                            remote_candidate
+                                .installation_instruction
+                                .split_whitespace()
+                                .last()
+                                .unwrap_or_default()
+                                == local_candidate.binary_name()
+                        } else {
+                            false
+                        }
+                    }),
+                );
             }
         }
 
         ui.add_space(7. * PADDING);
     }
 
-    fn render_selected_candidate(ui: &mut Ui, selected_candidate: &mut Option<Candidate>) {
+    fn render_selected_candidate(
+        ui: &mut Ui,
+        selected_candidate: &mut Option<Candidate>,
+        local_candidate: Option<&LocalCandidate>,
+    ) {
         ui.add_space(PADDING);
         ui.horizontal(|ui| {
             ui.with_layout(Layout::left_to_right(), |ui| {
@@ -357,21 +378,31 @@ impl SdkmanApp {
             .map(|c| c.versions.to_vec())
             .unwrap_or_default()
         {
-            SdkmanApp::render_selected_candidate_version(ui, &selected_candidate_version);
+            SdkmanApp::render_selected_candidate_version(
+                ui,
+                &selected_candidate_version,
+                local_candidate
+                    .map(|c| c.versions())
+                    .unwrap_or(&HashMap::new()),
+            );
         }
         ui.add_space(3. * PADDING);
     }
 
-    fn render_selected_candidate_version(ui: &mut Ui, version: &String) {
+    fn render_selected_candidate_version(
+        ui: &mut Ui,
+        version: &RemoteVersion,
+        local_versions: &HashMap<String, bool>,
+    ) {
         ui.horizontal(|ui| {
             ui.with_layout(Layout::left_to_right(), |ui| {
-                ui.label(version);
+                ui.label(version.mk_string(local_versions));
             });
             ui.with_layout(Layout::right_to_left(), |ui| {
                 if ui
                     .add(Button::new("delete").text_style(eframe::egui::TextStyle::Body))
                     .on_hover_ui(|ui| {
-                        show_tooltip_text(ui.ctx(), Id::new(version), "Delete version");
+                        show_tooltip_text(ui.ctx(), Id::new(version.id()), "Delete version");
                     })
                     .clicked()
                 {
@@ -380,7 +411,7 @@ impl SdkmanApp {
                 if ui
                     .add(Button::new("install").text_style(eframe::egui::TextStyle::Body))
                     .on_hover_ui(|ui| {
-                        show_tooltip_text(ui.ctx(), Id::new(version), "Install version");
+                        show_tooltip_text(ui.ctx(), Id::new(version.id()), "Install version");
                     })
                     .clicked()
                 {
@@ -389,7 +420,7 @@ impl SdkmanApp {
                 if ui
                     .add(Button::new("current").text_style(eframe::egui::TextStyle::Body))
                     .on_hover_ui(|ui| {
-                        show_tooltip_text(ui.ctx(), Id::new(version), "Set current version");
+                        show_tooltip_text(ui.ctx(), Id::new(version.id()), "Set current version");
                     })
                     .clicked()
                 {
