@@ -49,7 +49,6 @@ fn main() {
 
         let remote_candidates_handle = thread::spawn(|| match fetch_remote_candidates() {
             Ok(candidates) => {
-                println!("Fetched {} candidates from server", candidates.len());
                 candidates
             }
             Err(e) => {
@@ -59,7 +58,6 @@ fn main() {
         });
         let local_candidates_handle = thread::spawn(|| match retrieve_local_candidates() {
             Ok(candidates) => {
-                println!("Found {} locally installed candidates.", candidates.len());
                 candidates
             }
             Err(e) => {

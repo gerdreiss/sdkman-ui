@@ -69,6 +69,7 @@ pub struct SdkmanApp {
     selected_candidate: Option<Candidate>,
     candidate_search_dialog: bool,
     candidate_search_term: String,
+    error_message: Option<String>,
 }
 
 impl Default for SdkmanApp {
@@ -89,6 +90,7 @@ impl Default for SdkmanApp {
             selected_candidate: None,
             candidate_search_dialog: false,
             candidate_search_term: String::default(),
+            error_message: None,
         }
     }
 }
@@ -148,6 +150,7 @@ impl SdkmanApp {
             selected_candidate: _,
             candidate_search_dialog,
             candidate_search_term: _,
+            error_message: _,
         } = self;
         // define a TopBottomPanel widget
         TopBottomPanel::top("top_panel").show(ctx, |ui| {
@@ -202,6 +205,14 @@ impl SdkmanApp {
         });
     }
 
+    fn render_error(ctx: &CtxRef, message: &String) {
+        Window::new("Search").show(ctx, |ui| {
+            ui.add_space(PADDING);
+            ui.label(message);
+            ui.add_space(PADDING);
+        });
+    }
+
     pub fn render_candidates(&mut self, ctx: &CtxRef, ui: &mut Ui) {
         let Self {
             app_name: _,
@@ -211,7 +222,18 @@ impl SdkmanApp {
             selected_candidate,
             candidate_search_dialog,
             candidate_search_term,
+            error_message,
         } = self;
+        if ui.input().key_pressed(Key::Escape) {
+            *selected_candidate = None;
+            *candidate_search_dialog = false;
+            *candidate_search_term = String::default();
+            *error_message = None;
+        }
+
+        if let Some(err) = error_message {
+            SdkmanApp::render_error(ctx, err);
+        }
 
         if *candidate_search_dialog {
             SdkmanApp::render_search_dialog(
@@ -220,6 +242,7 @@ impl SdkmanApp {
                 selected_candidate,
                 candidate_search_dialog,
                 candidate_search_term,
+                error_message
             );
         }
 
@@ -260,10 +283,10 @@ impl SdkmanApp {
                             }
                             Err(e) => {
                                 *selected_candidate = None;
-                                println!(
-                                    "Loading all versions for candidate '{}' failed with {}",
-                                    candidate.name, e
-                                )
+                                *error_message = Some(format!(
+                                    "Fetching available candidate versions failed with:\n{}",
+                                    e
+                                ));
                             }
                         }
                     }
@@ -393,6 +416,7 @@ impl SdkmanApp {
         selected_candidate: &mut Option<Candidate>,
         candidate_search_dialog: &mut bool,
         candidate_search_term: &mut String,
+        error_message: &mut Option<String>,
     ) {
         Window::new("Search").show(ctx, |ui| {
             ui.add_space(PADDING);
@@ -418,10 +442,10 @@ impl SdkmanApp {
                                     }
                                     Err(e) => {
                                         *selected_candidate = None;
-                                        println!(
+                                        *error_message = Some(format!(
                                             "Loading all versions for candidate '{}' failed with {}",
                                             candidate_search_term, e
-                                        );
+                                        ));
                                     }
                                 }
                                 *candidate_search_dialog = false;
