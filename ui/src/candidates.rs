@@ -61,7 +61,7 @@ impl Candidate {
 }
 
 #[derive(PartialEq)]
-pub struct Candidates {
+pub struct SdkmanApp {
     app_name: &'static str,
     app_heading: &'static str,
     logo: Logo,
@@ -71,7 +71,7 @@ pub struct Candidates {
     candidate_search_term: String,
 }
 
-impl Default for Candidates {
+impl Default for SdkmanApp {
     fn default() -> Self {
         let image = image::load_from_memory(include_bytes!("../assets/logo.png")).unwrap();
         let size = (image.width() as usize, image.height() as usize);
@@ -93,12 +93,12 @@ impl Default for Candidates {
     }
 }
 
-impl Candidates {
+impl SdkmanApp {
     pub fn new(
         remote_candidates: &Vec<RemoteCandidate>,
         local_candidates: &Vec<LocalCandidate>,
-    ) -> Candidates {
-        let mut app = Candidates::default();
+    ) -> SdkmanApp {
+        let mut app = SdkmanApp::default();
         app.candidates = remote_candidates
             .iter()
             .map(|remote_candidate| {
@@ -238,46 +238,13 @@ impl Candidates {
         } = self;
 
         if *candidate_search_dialog {
-            Window::new("Search").show(ctx, |ui| {
-                ui.add_space(PADDING);
-                ui.horizontal(|ui| {
-                    ui.label("Candidate:");
-                    ui.with_layout(Layout::left_to_right(), |ui| {
-                        let text_input = ui.text_edit_singleline(candidate_search_term);
-                        if text_input.lost_focus() && ui.input().key_pressed(Key::Enter) {
-                            match candidates.into_iter().find(|candidate| {
-                                candidate.name == *candidate_search_term
-                                    || candidate
-                                        .installation_instruction
-                                        .ends_with(candidate_search_term.as_str())
-                            }) {
-                                None => {}
-                                Some(found) => {
-                                    match fetch_candidate_versions(&mut found.to_model()) {
-                                        Ok(candidate_with_versions) => {
-                                            *selected_candidate = Some(Candidate::from_model(
-                                                candidate_with_versions,
-                                                None,
-                                            ));
-                                        }
-                                        Err(e) => {
-                                            *selected_candidate = None;
-                                            let msg = format!(
-                                                "Loading all versions for candidate '{}' failed",
-                                                candidate_search_term
-                                            );
-                                            tracing::error!("{}:\n{}", msg, e)
-                                        }
-                                    }
-                                    *candidate_search_dialog = false;
-                                    *candidate_search_term = String::default();
-                                }
-                            }
-                        }
-                    });
-                });
-                ui.add_space(PADDING);
-            });
+            SdkmanApp::render_search_dialog(
+                ctx,
+                candidates,
+                selected_candidate,
+                candidate_search_dialog,
+                candidate_search_term,
+            );
         }
 
         // render candidates
@@ -352,52 +319,146 @@ impl Candidates {
             ui.add(Separator::default());
 
             if selected_candidate.is_some() {
-                ui.add_space(PADDING);
-                ui.horizontal(|ui| {
-                    ui.with_layout(Layout::left_to_right(), |ui| {
-                        ui.add_space(PADDING);
-                        ui.add(
-                            Label::new(format!(
-                                "Available {} versions",
-                                selected_candidate.as_ref().unwrap().name
-                            ))
-                            .wrap(true)
-                            .text_style(eframe::egui::TextStyle::Body),
-                        );
-                    });
-                    ui.with_layout(Layout::right_to_left(), |ui| {
-                        ui.add_space(PADDING);
-                        ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
-                            let close_btn_label = Label::new("❌")
-                                .wrap(true)
-                                .text_style(eframe::egui::TextStyle::Body)
-                                .sense(Sense::click());
-                            if ui
-                                .add(close_btn_label)
-                                .on_hover_ui(|ui| {
-                                    show_tooltip_text(ui.ctx(), Id::new(&candidate.name), "Close");
-                                })
-                                .clicked()
-                            {
-                                *selected_candidate = None;
-                            }
-                        });
-                    });
-                });
-                // render all available versions
-                ui.add_space(2. * PADDING);
-                let available_versions_text = selected_candidate
-                    .as_ref()
-                    .map(|c| c.versions.join("\n"))
-                    .unwrap_or_default();
-                let available_versions =
-                    Label::new(available_versions_text).text_style(eframe::egui::TextStyle::Body);
-                ui.add(available_versions);
-                ui.add_space(3. * PADDING);
+                SdkmanApp::render_selected_candidate(ui, selected_candidate);
             }
         }
 
         ui.add_space(7. * PADDING);
+    }
+
+    fn render_selected_candidate(ui: &mut Ui, selected_candidate: &mut Option<Candidate>) {
+        ui.add_space(PADDING);
+        ui.horizontal(|ui| {
+            ui.with_layout(Layout::left_to_right(), |ui| {
+                ui.add_space(PADDING);
+                ui.add(
+                    Label::new(format!(
+                        "Available {} versions",
+                        selected_candidate.as_ref().unwrap().name
+                    ))
+                    .wrap(true)
+                    .text_style(eframe::egui::TextStyle::Body),
+                );
+            });
+            ui.with_layout(Layout::right_to_left(), |ui| {
+                ui.add_space(PADDING);
+                ui.with_layout(Layout::top_down(Align::RIGHT), |ui| {
+                    let close_btn_label = Label::new("❌")
+                        .wrap(true)
+                        .text_style(eframe::egui::TextStyle::Body)
+                        .sense(Sense::click());
+                    if ui
+                        .add(close_btn_label)
+                        .on_hover_ui(|ui| {
+                            show_tooltip_text(
+                                ui.ctx(),
+                                Id::new(selected_candidate.as_ref().map(|c| &c.name).unwrap()),
+                                "Close",
+                            );
+                        })
+                        .clicked()
+                    {
+                        *selected_candidate = None;
+                    }
+                });
+            });
+        });
+        // render all available versions
+        ui.add_space(2. * PADDING);
+        for selected_candidate_version in selected_candidate
+            .as_ref()
+            .map(|c| c.versions.to_vec())
+            .unwrap_or_default()
+        {
+            SdkmanApp::render_selected_candidate_version(ui, &selected_candidate_version);
+        }
+        ui.add_space(3. * PADDING);
+    }
+
+    fn render_selected_candidate_version(ui: &mut Ui, version: &String) {
+        ui.horizontal(|ui| {
+            ui.with_layout(Layout::left_to_right(), |ui| {
+                ui.label(version);
+            });
+            ui.with_layout(Layout::right_to_left(), |ui| {
+                if ui
+                    .add(Button::new("delete").text_style(eframe::egui::TextStyle::Body))
+                    .on_hover_ui(|ui| {
+                        show_tooltip_text(ui.ctx(), Id::new(version), "Delete version");
+                    })
+                    .clicked()
+                {
+                    println!("Deleting candidate version...");
+                }
+                if ui
+                    .add(Button::new("install").text_style(eframe::egui::TextStyle::Body))
+                    .on_hover_ui(|ui| {
+                        show_tooltip_text(ui.ctx(), Id::new(version), "Install version");
+                    })
+                    .clicked()
+                {
+                    println!("Installing candidate version...");
+                }
+                if ui
+                    .add(Button::new("current").text_style(eframe::egui::TextStyle::Body))
+                    .on_hover_ui(|ui| {
+                        show_tooltip_text(ui.ctx(), Id::new(version), "Set current version");
+                    })
+                    .clicked()
+                {
+                    println!("Setting current candidate version...");
+                }
+            });
+        });
+    }
+
+    fn render_search_dialog(
+        ctx: &CtxRef,
+        candidates: &Vec<Candidate>,
+        selected_candidate: &mut Option<Candidate>,
+        candidate_search_dialog: &mut bool,
+        candidate_search_term: &mut String,
+    ) {
+        Window::new("Search").show(ctx, |ui| {
+            ui.add_space(PADDING);
+            ui.horizontal(|ui| {
+                ui.label("Candidate:");
+                ui.with_layout(Layout::left_to_right(), |ui| {
+                    let text_input = ui.text_edit_singleline(candidate_search_term);
+                    if text_input.lost_focus() && ui.input().key_pressed(Key::Enter) {
+                        match candidates.into_iter().find(|candidate| {
+                            candidate.name == *candidate_search_term
+                                || candidate
+                                    .installation_instruction
+                                    .ends_with(candidate_search_term.as_str())
+                        }) {
+                            None => {}
+                            Some(found) => {
+                                match fetch_candidate_versions(&mut found.to_model()) {
+                                    Ok(candidate_with_versions) => {
+                                        *selected_candidate = Some(Candidate::from_model(
+                                            candidate_with_versions,
+                                            None,
+                                        ));
+                                    }
+                                    Err(e) => {
+                                        *selected_candidate = None;
+                                        let msg = format!(
+                                            "Loading all versions for candidate '{}' failed",
+                                            candidate_search_term
+                                        );
+                                        tracing::error!("{}:\n{}", msg, e)
+                                    }
+                                }
+                                *candidate_search_dialog = false;
+                                *candidate_search_term = String::default();
+                            }
+                        }
+                    }
+                });
+            });
+            ui.add_space(PADDING);
+        });
     }
 
     pub fn render_footer(&self, ctx: &CtxRef) {

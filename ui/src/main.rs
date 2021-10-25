@@ -10,11 +10,11 @@ use eframe::run_native;
 
 use api::local::retrieve_local_candidates;
 use api::remote::fetch_remote_candidates;
-use candidates::Candidates;
+use candidates::SdkmanApp;
 
 mod candidates;
 
-impl App for Candidates {
+impl App for SdkmanApp {
     fn update(&mut self, ctx: &eframe::egui::CtxRef, frame: &mut eframe::epi::Frame<'_>) {
         self.render_top_panel(ctx, frame);
         CentralPanel::default().show(ctx, |ui| {
@@ -74,16 +74,16 @@ fn main() {
             local_candidates_handle.join(),
         ) {
             (Ok(remote_candidates), Ok(local_candidates)) => {
-                let app = Candidates::new(&remote_candidates, &local_candidates);
+                let app = SdkmanApp::new(&remote_candidates, &local_candidates);
                 let mut win_option = NativeOptions::default();
                 win_option.initial_window_size = Some(Vec2::new(1024., 960.));
                 run_native(Box::new(app), win_option);
             }
             (Err(_), _) => {
-                tracing::error!("Failed to retrieve remote candidates");
+                tracing::error!("Remote candidates retrieval thread failed.");
             }
             (_, Err(_)) => {
-                tracing::error!("Failed to retrieve local candidates");
+                tracing::error!("Local candidates retrieval thread failed.");
             }
         }
     }
