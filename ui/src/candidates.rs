@@ -400,7 +400,11 @@ impl SdkmanApp {
             });
             ui.with_layout(Layout::right_to_left(), |ui| {
                 if ui
-                    .add(Button::new("delete").text_style(eframe::egui::TextStyle::Body))
+                    .add(
+                        Button::new("delete")
+                            .text_style(eframe::egui::TextStyle::Body)
+                            .enabled(local_versions.contains_key(version.id())),
+                    )
                     .on_hover_ui(|ui| {
                         show_tooltip_text(ui.ctx(), Id::new(version.id()), "Delete version");
                     })
@@ -409,7 +413,11 @@ impl SdkmanApp {
                     println!("Deleting candidate version...");
                 }
                 if ui
-                    .add(Button::new("install").text_style(eframe::egui::TextStyle::Body))
+                    .add(
+                        Button::new("install")
+                            .text_style(eframe::egui::TextStyle::Body)
+                            .enabled(local_versions.get(version.id()).is_none()),
+                    )
                     .on_hover_ui(|ui| {
                         show_tooltip_text(ui.ctx(), Id::new(version.id()), "Install version");
                     })
@@ -418,7 +426,14 @@ impl SdkmanApp {
                     println!("Installing candidate version...");
                 }
                 if ui
-                    .add(Button::new("current").text_style(eframe::egui::TextStyle::Body))
+                    .add(
+                        Button::new("current")
+                            .text_style(eframe::egui::TextStyle::Body)
+                            .enabled(
+                                local_versions.contains_key(version.id())
+                                    && local_versions.get(version.id()).unwrap() == &false,
+                            ),
+                    )
                     .on_hover_ui(|ui| {
                         show_tooltip_text(ui.ctx(), Id::new(version.id()), "Set current version");
                     })
