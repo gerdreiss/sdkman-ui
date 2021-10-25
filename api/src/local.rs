@@ -31,17 +31,14 @@ pub fn retrieve_local_candidates() -> std::io::Result<Vec<LocalCandidate>> {
                         continue;
                     }
                     let version_id = version_path
-                        .canonicalize()?
+                        .canonicalize()? // using canonicalize() follows a symlink and creates a canonized path
                         .file_name()
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
 
-                    if installed_current_map.contains_key(&version_id) {
-                        installed_current_map.insert(version_id, true);
-                    } else {
-                        installed_current_map.insert(version_id, false);
-                    }
+                    let current = installed_current_map.contains_key(&version_id); // since we followed the symlink, one of the versions would be processed twice
+                    installed_current_map.insert(version_id, current);
                 }
 
                 local_versions.push(LocalCandidate::new(
@@ -54,6 +51,8 @@ pub fn retrieve_local_candidates() -> std::io::Result<Vec<LocalCandidate>> {
                         .collect(),
                 ));
             }
+
+            dbg!(&local_versions);
 
             Ok(local_versions)
         }
