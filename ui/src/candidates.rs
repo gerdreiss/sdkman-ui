@@ -91,16 +91,17 @@ impl Default for SdkmanApp {
 
 impl SdkmanApp {
     pub fn new(
-        remote_candidates: &Vec<RemoteCandidate>,
-        local_candidates: &Vec<LocalCandidate>,
+        remote_candidates: &[RemoteCandidate],
+        local_candidates: &[LocalCandidate],
     ) -> SdkmanApp {
-        let mut app = SdkmanApp::default();
-        app.candidates = remote_candidates
-            .iter()
-            .map(|remote_candidate| Candidate::from_model(remote_candidate))
-            .collect();
-        app.local_candidates = local_candidates.to_vec();
-        app
+        SdkmanApp {
+            candidates: remote_candidates
+                .iter()
+                .map(|remote_candidate| Candidate::from_model(remote_candidate))
+                .collect(),
+            local_candidates: local_candidates.to_vec(),
+            ..Default::default()
+        }
     }
 
     pub fn app_name(&self) -> &str {
@@ -232,7 +233,7 @@ impl SdkmanApp {
                                         .to_string(),
                                 )
                             })
-                            .map(|c| c.clone())
+                            .cloned()
                             .collect();
                         *selected_candidate = None;
                     }
@@ -242,7 +243,7 @@ impl SdkmanApp {
         });
     }
 
-    fn render_error(ctx: &CtxRef, message: &String) {
+    fn render_error(ctx: &CtxRef, message: &str) {
         Window::new("Search").show(ctx, |ui| {
             ui.add_space(PADDING);
             ui.label(message);
@@ -495,7 +496,7 @@ impl SdkmanApp {
 
     fn render_search_dialog(
         ctx: &CtxRef,
-        candidates: &Vec<Candidate>,
+        candidates: &[Candidate],
         selected_candidate: &mut Option<Candidate>,
         candidate_search_dialog: &mut bool,
         candidate_search_term: &mut String,
@@ -508,7 +509,7 @@ impl SdkmanApp {
                 ui.with_layout(Layout::left_to_right(), |ui| {
                     let text_input = ui.text_edit_singleline(candidate_search_term);
                     if text_input.lost_focus() && ui.input().key_pressed(Key::Enter) {
-                        match candidates.into_iter().find(|candidate| {
+                        match candidates.iter().find(|candidate| {
                             candidate.name == *candidate_search_term
                                 || candidate
                                     .installation_instruction

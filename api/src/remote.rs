@@ -74,7 +74,7 @@ impl RemoteCandidate {
     pub fn versions(&self) -> &Vec<RemoteVersion> {
         &self.versions
     }
-    pub fn with_versions(&mut self, versions: &Vec<RemoteVersion>) -> &mut Self {
+    pub fn with_versions(&mut self, versions: &[RemoteVersion]) -> &mut Self {
         self.versions = versions.to_vec();
         self
     }
@@ -106,7 +106,7 @@ impl RemoteVersion {
     fn get_status_and_usage(
         &self,
         local_versions: &HashMap<String, bool>,
-        version: &String,
+        version: &str,
     ) -> (&str, &str) {
         (
             if local_versions.contains_key(version) {
@@ -128,7 +128,7 @@ impl FromStr for RemoteVersion {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         if input.contains(" | ") {
-            let parts: Vec<&str> = input.split_terminator("|").map(|s| s.trim()).collect();
+            let parts: Vec<&str> = input.split_terminator('|').map(|s| s.trim()).collect();
             Ok(RemoteVersion::JavaVersion(
                 util::string_at(&parts, 0),
                 util::string_at(&parts, 1),
@@ -163,8 +163,7 @@ impl FromStr for RemoteCandidate {
         let mut homepage = String::new();
         let mut default_version = String::new();
 
-        let mut lines = input.lines();
-        while let Some(line) = lines.next() {
+        for line in input.lines() {
             if line.is_empty() {
                 continue;
             } else if URI_REGEX.is_match(line) {
@@ -187,7 +186,7 @@ impl FromStr for RemoteCandidate {
                 binary_name.push_str(line.split_whitespace().last().unwrap());
             } else {
                 description.push_str(line);
-                description.push_str(" ");
+                description.push(' ');
             }
         }
 
@@ -245,13 +244,13 @@ pub fn fetch_remote_candidates() -> Result<Vec<RemoteCandidate>, SdkmanApiError>
     let url = prepare_url(Endpoint::CandidateList)?;
     let res = reqwest::blocking::get(url)?;
     let status: StatusCode = res.status();
-    return if status.is_success() {
+    if status.is_success() {
         res.text()
-            .map(|text| parse_candidates(text))
-            .map_err(|err| SdkmanApiError::RequestFailed(err))
+            .map(parse_candidates)
+            .map_err(SdkmanApiError::RequestFailed)
     } else {
         Err(SdkmanApiError::ServerError(status.as_u16()))
-    };
+    }
 }
 
 pub fn fetch_candidate_versions(
@@ -262,13 +261,13 @@ pub fn fetch_candidate_versions(
     ))?;
     let res = reqwest::blocking::get(url)?;
     let status: StatusCode = res.status();
-    return if status.is_success() {
+    if status.is_success() {
         res.text()
             .map(move |text| &*remote_candidate.with_versions(&parse_available_versions(&text)))
-            .map_err(|err| SdkmanApiError::RequestFailed(err))
+            .map_err(SdkmanApiError::RequestFailed)
     } else {
         Err(SdkmanApiError::ServerError(status.as_u16()))
-    };
+    }
 }
 
 fn prepare_url(endpoint: Endpoint) -> Result<String, SdkmanApiError> {
@@ -292,7 +291,7 @@ fn parse_candidates(input: String) -> Vec<RemoteCandidate> {
         .collect()
 }
 
-fn parse_available_versions(input: &String) -> Vec<RemoteVersion> {
+fn parse_available_versions(input: &str) -> Vec<RemoteVersion> {
     if input.contains("Available Java Versions") {
         parse_available_java_versions(input)
     } else {
@@ -310,7 +309,7 @@ fn parse_available_versions(input: &String) -> Vec<RemoteVersion> {
     }
 }
 
-fn parse_available_java_versions(input: &String) -> Vec<RemoteVersion> {
+fn parse_available_java_versions(input: &str) -> Vec<RemoteVersion> {
     input
         .lines()
         .skip(5)

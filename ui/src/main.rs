@@ -67,8 +67,10 @@ fn main() {
         ) {
             (Ok(remote_candidates), Ok(local_candidates)) => {
                 let app = SdkmanApp::new(&remote_candidates, &local_candidates);
-                let mut win_option = NativeOptions::default();
-                win_option.initial_window_size = Some(Vec2::new(1024., 960.));
+                let win_option = NativeOptions {
+                    initial_window_size: Some(Vec2::new(1024., 960.)),
+                    ..Default::default()
+                };
                 run_native(Box::new(app), win_option);
             }
             (Err(_), _) => {
