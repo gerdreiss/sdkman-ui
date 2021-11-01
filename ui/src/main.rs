@@ -5,8 +5,8 @@ use eframe::egui::CentralPanel;
 use eframe::egui::ScrollArea;
 use eframe::egui::Vec2;
 use eframe::epi::App;
-use eframe::NativeOptions;
 use eframe::run_native;
+use eframe::NativeOptions;
 
 use api::local::retrieve_local_candidates;
 use api::remote::fetch_remote_candidates;
@@ -46,20 +46,15 @@ fn main() {
     } else if env::var("SDKMAN_DIR").is_err() {
         println!("sdkman is not installed!")
     } else {
-
         let remote_candidates_handle = thread::spawn(|| match fetch_remote_candidates() {
-            Ok(candidates) => {
-                candidates
-            }
+            Ok(candidates) => candidates,
             Err(e) => {
                 println!("Failed to retrieve remote candidates: {}", e);
                 Vec::new()
             }
         });
         let local_candidates_handle = thread::spawn(|| match retrieve_local_candidates() {
-            Ok(candidates) => {
-                candidates
-            }
+            Ok(candidates) => candidates,
             Err(e) => {
                 println!("Failed to retrieve local candidates: {}", e);
                 Vec::new()
