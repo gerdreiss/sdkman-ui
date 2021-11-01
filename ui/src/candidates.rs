@@ -134,12 +134,12 @@ impl SdkmanApp {
             app_name: _,
             app_heading,
             logo,
-            candidates: _,
-            local_candidates: _,
-            selected_candidate: _,
+            candidates,
+            local_candidates,
+            selected_candidate,
             candidate_search_dialog,
             candidate_search_term: _,
-            error_message: _,
+            error_message,
         } = self;
         // define a TopBottomPanel widget
         TopBottomPanel::top("top_panel").show(ctx, |ui| {
@@ -180,6 +180,30 @@ impl SdkmanApp {
                     {
                         frame.quit();
                     }
+                    // Refresh button
+                    if ui
+                        .add(Button::new("🔄").text_style(TextStyle::Body))
+                        .on_hover_text("Refresh")
+                        .clicked()
+                    {
+                        match fetch_remote_candidates() {
+                            Ok(models) => {
+                                let cands: Vec<Candidate> = models
+                                    .iter()
+                                    .map(|model| Candidate::from_model(model))
+                                    .collect();
+                                *candidates = cands;
+                                *selected_candidate = None;
+                            }
+                            Err(e) => {
+                                *selected_candidate = None;
+                                *error_message = Some(format!(
+                                    "Refreshing the list of candidates failed with:\n{}",
+                                    e
+                                ));
+                            }
+                        }
+                    }
                     // Search button
                     if ui
                         .add(Button::new("🔎").text_style(TextStyle::Body))
@@ -187,6 +211,30 @@ impl SdkmanApp {
                         .clicked()
                     {
                         *candidate_search_dialog = true;
+                    }
+                    // Display installed button
+                    if ui
+                        .add(Button::new("I").text_style(TextStyle::Body))
+                        .on_hover_text("Search")
+                        .clicked()
+                    {
+                        let local_binary_names: Vec<&String> =
+                            local_candidates.iter().map(|lc| lc.binary_name()).collect();
+                        *candidates = candidates
+                            .iter()
+                            .filter(|candidate| {
+                                local_binary_names.contains(
+                                    &&candidate
+                                        .installation_instruction
+                                        .split_whitespace()
+                                        .last()
+                                        .unwrap_or_default()
+                                        .to_string(),
+                                )
+                            })
+                            .map(|c| c.clone())
+                            .collect();
+                        *selected_candidate = None;
                     }
                 });
             });
