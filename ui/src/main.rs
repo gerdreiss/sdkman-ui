@@ -18,7 +18,7 @@ impl App for SdkmanApp {
     fn update(&mut self, ctx: &eframe::egui::CtxRef, frame: &mut eframe::epi::Frame<'_>) {
         self.render_top_panel(ctx, frame);
         CentralPanel::default().show(ctx, |ui| {
-            ScrollArea::auto_sized().show(ui, |ui| {
+            ScrollArea::vertical().show(ui, |ui| {
                 self.render_candidates(ctx, ui);
             });
             self.render_footer(ctx);
