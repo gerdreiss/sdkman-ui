@@ -339,12 +339,13 @@ impl SdkmanApp {
                 });
             });
 
-            // render description
             ui.add_space(PADDING);
+            // render description
             let description = Label::new(&candidate.description)
                 .wrap(true)
                 .text_style(eframe::egui::TextStyle::Body);
             ui.add(description);
+
             ui.add_space(PADDING);
             // render installation instruction
             ui.with_layout(Layout::right_to_left(), |ui| {
@@ -362,12 +363,12 @@ impl SdkmanApp {
                     selected_candidate,
                     local_candidates.iter().find(|local_candidate| {
                         if let Some(remote_candidate) = &selected_candidate {
-                            remote_candidate
-                                .installation_instruction
-                                .split_whitespace()
-                                .last()
-                                .unwrap_or_default()
-                                == local_candidate.binary_name()
+                            local_candidate.binary_name()
+                                == remote_candidate
+                                    .installation_instruction
+                                    .split_whitespace()
+                                    .last()
+                                    .unwrap_or_default()
                         } else {
                             false
                         }
